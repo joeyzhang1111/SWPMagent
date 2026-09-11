@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SWPM — Software Project Management</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/baseline.css">
+  <link rel="stylesheet" href="css/tasks.css">
+  <link rel="stylesheet" href="css/kpi.css">
+  <link rel="stylesheet" href="css/notifications.css">
+  <link rel="stylesheet" href="css/canvas-editor.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 32 32" fill="none"><rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" stroke-width="2.5"/><path d="M9 16h14M16 9v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      </div>
+      <span class="logo-text">SWPM</span>
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </li>
+      <li class="nav-item" data-page="baseline">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="3"/></svg>
+        <span>Baseline</span>
+      </li>
+      <li class="nav-item" data-page="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>
+        <span>Tasks</span>
+      </li>
+      <li class="nav-item" data-page="kpi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>SWKPI</span>
+      </li>
+      <li class="nav-item" data-page="reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>Weekly Report</span>
+      </li>
+      <li class="nav-item" data-page="notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span>Notifications</span>
+        <span class="nav-badge" id="notif-badge">3</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <div class="data-sources">
+        <div class="source-dot source-alm" title="ALM Connected"></div>
+        <div class="source-dot source-qc" title="QC Connected"></div>
+        <div class="source-dot source-doors" title="DOORS Connected"></div>
+      </div>
+      <span class="sidebar-version">v1.0 Demo</span>
+    </div>
+  </nav>
+
+  <main class="main-content" id="main-content">
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <h1 class="page-title" id="page-title">Dashboard</h1>
+        <span class="page-subtitle" id="page-subtitle">Overview of all project activities</span>
+      </div>
+      <div class="top-bar-right">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search projects, tasks...">
+        </div>
+        <button class="btn btn-secondary" id="btn-toggle-layout-edit" title="Enable drag &amp; resize layout editing on this page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          Edit Layout
+        </button>
+        <button class="btn btn-secondary" id="btn-reset-layout-edit" title="Reset custom layout back to default">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        </button>
+        <div class="user-avatar">JH</div>
+      </div>
+    </header>
+
+    <div class="canvas-edit-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      Layout edit mode is on — drag a card to move it, drag the blue corner to resize. Your layout is saved automatically.
+    </div>
+
+    <!-- Dashboard Page -->
+    <section class="page active" id="page-dashboard">
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-active">12</span>
+            <span class="stat-label">Active Baselines</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-tasks">287</span>
+            <span class="stat-label">Total Tasks</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--amber">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-risks">5</span>
+            <span class="stat-label">Risk Items</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--red">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" id="stat-overdue">3</span>
+            <span class="stat-label">Overdue</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card card--wide">
+          <div class="card-header">
+            <h3>Burndown Chart</h3>
+            <select class="filter-select" id="burndown-project">
+              <option>ESP10 — BL3</option>
+              <option>IPB2.0 — BL2</option>
+              <option>ROPP41 — BL1</option>
+            </select>
+          </div>
+          <div class="card-body">
+            <canvas id="burndownChart" height="220"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Task Distribution</h3></div>
+          <div class="card-body">
+            <canvas id="taskPieChart" height="220"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>Data Source Status</h3></div>
+          <div class="card-body">
+            <div class="source-status-list">
+              <div class="source-row">
+                <span class="source-name">ALM</span>
+                <span class="source-detail">Tasks, Sprints, Defects</span>
+                <span class="status-badge status-badge--ok">Connected</span>
+              </div>
+              <div class="source-row">
+                <span class="source-name">QC</span>
+                <span class="source-detail">Test Cases, QG Maturity</span>
+                <span class="status-badge status-badge--ok">Connected</span>
+              </div>
+              <div class="source-row">
+                <span class="source-name">DOORS</span>
+                <span class="source-detail">Requirements, Traceability</span>
+                <span class="status-badge status-badge--ok">Connected</span>
+              </div>
+              <div class="source-row">
+                <span class="source-name">Splunk</span>
+                <span class="source-detail">SWKPI Reports</span>
+                <span class="status-badge status-badge--warn">Syncing</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card card--wide">
+          <div class="card-header">
+            <h3>Upcoming Milestones</h3>
+            <span class="card-hint">Next 30 days</span>
+          </div>
+          <div class="card-body">
+            <div class="timeline" id="timeline-milestones"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Baseline Management Page -->
+    <section class="page" id="page-baseline">
+      <div class="page-toolbar">
+        <div class="toolbar-filters">
+          <select class="filter-select" id="bl-product-filter">
+            <option value="">All Products</option>
+            <option>ESP10</option>
+            <option>IPB2.0</option>
+            <option>ROPP41</option>
+            <option>RBU</option>
+            <option>BWA</option>
+            <option>DPB</option>
+            <option>EMB</option>
+          </select>
+          <select class="filter-select" id="bl-status-filter">
+            <option value="">All Status</option>
+            <option>Ongoing</option>
+            <option>Pending</option>
+            <option>Closed</option>
+          </select>
+          <select class="filter-select" id="bl-category-filter">
+            <option value="">All Categories</option>
+            <option>Core</option>
+            <option>Advanced</option>
+            <option>New</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-create-baseline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Baseline
+        </button>
+      </div>
+
+      <div class="baseline-table-wrap">
+        <table class="data-table" id="baseline-table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Baseline</th>
+              <th>Category</th>
+              <th>Features</th>
+              <th>Sprint</th>
+              <th>Code Freeze</th>
+              <th>Param Freeze</th>
+              <th>Release Cat.</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="baseline-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- BEG Wizard Modal -->
+      <div class="modal-overlay" id="modal-beg-wizard">
+        <div class="modal">
+          <div class="modal-header">
+            <h2>BEG Wizard — Auto Generate Tasks</h2>
+            <button class="modal-close" id="modal-close-beg">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="wizard-steps">
+              <div class="wizard-step active" data-step="1">
+                <span class="step-num">1</span><span>Baseline Info</span>
+              </div>
+              <div class="wizard-step" data-step="2">
+                <span class="step-num">2</span><span>Feature Scope</span>
+              </div>
+              <div class="wizard-step" data-step="3">
+                <span class="step-num">3</span><span>Generate</span>
+              </div>
+            </div>
+            <div class="wizard-content" id="wizard-content">
+              <!-- Step 1: Baseline Info -->
+              <div class="wizard-panel active" data-panel="1">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Project / Product</label>
+                    <select class="form-input"><option>ESP10</option><option>IPB2.0</option><option>ROPP41</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Baseline Name</label>
+                    <input type="text" class="form-input" placeholder="e.g. BL3.1">
+                  </div>
+                  <div class="form-group">
+                    <label>Category</label>
+                    <select class="form-input"><option>Core</option><option>Advanced</option><option>New</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Release Category</label>
+                    <select class="form-input"><option>A-Sample</option><option>B-Sample</option><option>C-Sample</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Leading Time (weeks)</label>
+                    <input type="number" class="form-input" value="12">
+                  </div>
+                  <div class="form-group">
+                    <label>Sprint Duration (weeks)</label>
+                    <select class="form-input"><option>2</option><option>3</option><option>4</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Code Freeze Date</label>
+                    <input type="date" class="form-input">
+                  </div>
+                  <div class="form-group">
+                    <label>Parameter Freeze Date</label>
+                    <input type="date" class="form-input">
+                  </div>
+                </div>
+              </div>
+              <!-- Step 2: Feature Scope -->
+              <div class="wizard-panel" data-panel="2">
+                <p class="form-hint">Select features from DOORS requirements to include in this baseline:</p>
+                <div class="feature-checklist" id="feature-checklist"></div>
+              </div>
+              <!-- Step 3: Generate -->
+              <div class="wizard-panel" data-panel="3">
+                <div class="generate-preview">
+                  <h4>Generation Preview</h4>
+                  <div class="gen-summary">
+                    <div class="gen-item"><span class="gen-count">3</span><span>EPICs</span></div>
+                    <div class="gen-item"><span class="gen-count">12</span><span>Stories</span></div>
+                    <div class="gen-item"><span class="gen-count">47</span><span>Tasks</span></div>
+                  </div>
+                  <p class="form-hint">Tasks will be created in ALM and assigned to sprint plan automatically.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="wizard-prev">Back</button>
+            <button class="btn btn-primary" id="wizard-next">Next</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task Tracking Page -->
+    <section class="page" id="page-tasks">
+      <div class="page-toolbar">
+        <div class="toolbar-filters">
+          <select class="filter-select">
+            <option>All Projects</option>
+            <option>ESP10</option>
+            <option>IPB2.0</option>
+          </select>
+          <select class="filter-select">
+            <option>All Types</option>
+            <option>EPIC</option>
+            <option>Story</option>
+            <option>Task</option>
+          </select>
+          <select class="filter-select">
+            <option>All Sources</option>
+            <option>ALM</option>
+            <option>QC</option>
+            <option>DOORS</option>
+          </select>
+          <div class="view-toggle">
+            <button class="view-btn active" data-view="table">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </button>
+            <button class="view-btn" data-view="board">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            </button>
+            <button class="view-btn" data-view="trace" title="Traceability">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.2 7.2L15.8 10.8M8.2 16.8L15.8 13.2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <div class="task-view active" id="task-table-view">
+        <table class="data-table" id="task-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>Title</th>
+              <th>Source</th>
+              <th>Assignee</th>
+              <th>Priority</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th>Maturity</th>
+            </tr>
+          </thead>
+          <tbody id="task-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Board View (Kanban) -->
+      <div class="task-view" id="task-board-view">
+        <div class="kanban-board">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span class="kanban-dot kanban-dot--todo"></span>To Do <span class="kanban-count" id="kanban-todo-count">0</span></div>
+            <div class="kanban-cards" id="kanban-todo"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span class="kanban-dot kanban-dot--progress"></span>In Progress <span class="kanban-count" id="kanban-progress-count">0</span></div>
+            <div class="kanban-cards" id="kanban-progress"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span class="kanban-dot kanban-dot--review"></span>In Review <span class="kanban-count" id="kanban-review-count">0</span></div>
+            <div class="kanban-cards" id="kanban-review"></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><span class="kanban-dot kanban-dot--done"></span>Done <span class="kanban-count" id="kanban-done-count">0</span></div>
+            <div class="kanban-cards" id="kanban-done"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Traceability View (DOORS -> ALM -> QC matrix overview) -->
+      <div class="task-view" id="task-trace-view">
+        <div class="trace-health-bar" id="trace-health-bar"></div>
+        <div class="trace-matrix-wrap">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th class="th-doors">Requirement</th>
+                <th class="th-doors">Spec Status</th>
+                <th class="th-alm">Epic Progress</th>
+                <th class="th-alm">Story Progress</th>
+                <th class="th-qc">Component Test</th>
+                <th class="th-alm">Task Completion</th>
+                <th>Health</th>
+              </tr>
+            </thead>
+            <tbody id="trace-matrix-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- SWKPI Page -->
+    <section class="page" id="page-kpi">
+      <div class="page-toolbar">
+        <div class="toolbar-filters">
+          <select class="filter-select" id="kpi-release-filter">
+            <option>ESP10 — BL3</option>
+            <option>IPB2.0 — BL2</option>
+            <option>ROPP41 — BL1</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" id="btn-export-kpi">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Report
+        </button>
+      </div>
+
+      <div class="kpi-grid">
+        <!-- Requirement Management -->
+        <div class="kpi-category-card">
+          <div class="kpi-cat-header">
+            <h3>Requirement Management</h3>
+            <span class="kpi-source-tag">DOORS</span>
+          </div>
+          <div class="kpi-items">
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">Requirement Mgmt Checklist</span>
+                <span class="kpi-desc">Refer to DoD result</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: ≤20%</span>
+                <span class="kpi-actual kpi-ok">12%</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--ok" style="width:60%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SW Implementation -->
+        <div class="kpi-category-card">
+          <div class="kpi-cat-header">
+            <h3>SW Implementation</h3>
+            <span class="kpi-source-tag">ALM</span>
+          </div>
+          <div class="kpi-items">
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">Effort Control (Actual vs Planned)</span>
+                <span class="kpi-desc">Monthly deviation check</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: |abs| ≤5%</span>
+                <span class="kpi-actual kpi-ok">+3.2%</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--ok" style="width:64%"></div></div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">LL Sharing per BL</span>
+                <span class="kpi-desc">LL/BP count in T&amp;R per baseline</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: ≥3</span>
+                <span class="kpi-actual kpi-ok">4</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--ok" style="width:80%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test and Delivery -->
+        <div class="kpi-category-card">
+          <div class="kpi-cat-header">
+            <h3>Test &amp; Delivery</h3>
+            <span class="kpi-source-tag">QC + DOORS</span>
+          </div>
+          <div class="kpi-items">
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">DOORS vs QC Coverage</span>
+                <span class="kpi-desc">All accepted req IDs available in QC</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: 100%</span>
+                <span class="kpi-actual kpi-warn">94%</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--warn" style="width:94%"></div></div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">Open Topics before QG</span>
+                <span class="kpi-desc">Open items in ALM, QC, DOORS before EV</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: 0</span>
+                <span class="kpi-actual kpi-bad">2</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--bad" style="width:40%"></div></div>
+            </div>
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">Additional SW Release (Defects)</span>
+                <span class="kpi-desc">Extra releases due to defects</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: 0</span>
+                <span class="kpi-actual kpi-ok">0</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--ok" style="width:100%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Technical Compliance -->
+        <div class="kpi-category-card">
+          <div class="kpi-cat-header">
+            <h3>Technical Compliance</h3>
+            <span class="kpi-source-tag">Splunk</span>
+          </div>
+          <div class="kpi-items">
+            <div class="kpi-row">
+              <div class="kpi-info">
+                <span class="kpi-name">Technical Compliance</span>
+                <span class="kpi-desc">Leakage in TC check for state-of-art dev</span>
+              </div>
+              <div class="kpi-metric">
+                <span class="kpi-target">Target: 0 issues</span>
+                <span class="kpi-actual kpi-ok">0</span>
+              </div>
+              <div class="kpi-bar"><div class="kpi-bar-fill kpi-bar--ok" style="width:100%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card--wide kpi-trend-card">
+        <div class="card-header"><h3>KPI Trend — Last 6 Releases</h3></div>
+        <div class="card-body">
+          <canvas id="kpiTrendChart" height="200"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Weekly Report Page -->
+    <section class="page" id="page-reports">
+      <div class="page-toolbar">
+        <div class="toolbar-filters">
+          <select class="filter-select">
+            <option>Week 35 (Aug 25 – Aug 31)</option>
+            <option>Week 34 (Aug 18 – Aug 24)</option>
+            <option>Week 33 (Aug 11 – Aug 17)</option>
+          </select>
+          <select class="filter-select">
+            <option>All Projects</option>
+            <option>ESP10</option>
+            <option>IPB2.0</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-generate-report">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Generate Report
+        </button>
+      </div>
+
+      <div class="report-grid">
+        <div class="card">
+          <div class="card-header"><h3>ALM Summary</h3><span class="card-hint">Task &amp; Sprint Status</span></div>
+          <div class="card-body">
+            <div class="report-metrics">
+              <div class="report-metric"><span class="rm-value">47</span><span class="rm-label">Tasks Completed</span></div>
+              <div class="report-metric"><span class="rm-value">12</span><span class="rm-label">In Progress</span></div>
+              <div class="report-metric"><span class="rm-value rm-warn">3</span><span class="rm-label">Blocked</span></div>
+              <div class="report-metric"><span class="rm-value rm-bad">2</span><span class="rm-label">Overdue</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>QC Summary</h3><span class="card-hint">Test Execution</span></div>
+          <div class="card-body">
+            <div class="report-metrics">
+              <div class="report-metric"><span class="rm-value">156</span><span class="rm-label">Tests Passed</span></div>
+              <div class="report-metric"><span class="rm-value rm-warn">8</span><span class="rm-label">Tests Failed</span></div>
+              <div class="report-metric"><span class="rm-value">23</span><span class="rm-label">Not Run</span></div>
+              <div class="report-metric"><span class="rm-value">83%</span><span class="rm-label">Pass Rate</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>DOORS Summary</h3><span class="card-hint">Requirement Coverage</span></div>
+          <div class="card-body">
+            <div class="report-metrics">
+              <div class="report-metric"><span class="rm-value">324</span><span class="rm-label">Total Reqs</span></div>
+              <div class="report-metric"><span class="rm-value">298</span><span class="rm-label">Covered</span></div>
+              <div class="report-metric"><span class="rm-value rm-warn">26</span><span class="rm-label">Uncovered</span></div>
+              <div class="report-metric"><span class="rm-value">92%</span><span class="rm-label">Coverage</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card card--wide">
+          <div class="card-header"><h3>Risk Prediction</h3><span class="card-hint">Based on burndown &amp; historical data</span></div>
+          <div class="card-body">
+            <div class="risk-list" id="risk-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notifications Page -->
+    <section class="page" id="page-notifications">
+      <div class="page-toolbar">
+        <div class="toolbar-filters">
+          <select class="filter-select" id="notif-type-filter">
+            <option value="">All Types</option>
+            <option>Due Date</option>
+            <option>Risk Alert</option>
+            <option>Status Update</option>
+          </select>
+        </div>
+        <button class="btn btn-secondary" id="btn-mark-all-read">Mark All Read</button>
+      </div>
+      <div class="notification-list" id="notification-list"></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/mockData.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/canvasEditor.js"></script>
+</body>
+</html>
