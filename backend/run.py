@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import uvicorn
 from dotenv import load_dotenv
@@ -11,7 +12,7 @@ def main() -> None:
     uvicorn.run(
         "backend.app:app",
         host="127.0.0.1",
-        port=8000,
+        port=int(os.getenv("SWPM_API_PORT", "8000")),
         reload=False,
     )
 

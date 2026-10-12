@@ -1,5 +1,30 @@
 # Tasks API
 
+## Reference analysis workspace
+
+The Task page uses the Jenkins / DOORS / ALM / QC analysis implementation in
+`backend/summary_backend.py`, which is part of this repository. `reference_bridge.py`
+loads it, redirects its caches to `backend/.app_cache`, applies the environment
+overrides below and cleans the `RB_Baseline` column when DOORS CSVs are read.
+
+```env
+SWPM_ANALYSIS_CACHE_DIR=backend/.app_cache
+JENKINS_USER=<your Jenkins user>
+JENKINS_TOKEN=<your Jenkins API token>
+```
+
+`JENKINS_USER` and `JENKINS_TOKEN` are required and must only be set in
+`backend/.env`; the source code contains no default credentials.
+
+The FastAPI layer exposes project/build discovery, cached input scanning, asynchronous
+five-step analysis jobs, progress logs, and Excel report downloads under
+`/api/analysis/*`. Jenkins and RTC credentials stay in the backend. Optional Jenkins
+overrides are `JENKINS_BASE_URL`, `JENKINS_PROXY`, `JENKINS_USE_PROXY`,
+`JENKINS_VERIFY_SSL`, and `JENKINS_TIMEOUT_SECONDS`.
+
+Traceability remains on the original exact-identifier pipeline and continues to use
+the normalized `/api/tasks` payload.
+
 By default this service reads the real ALM cache produced by the reference GUI. This immediately exposes the same `all_defects` records to the React page without copying credentials or duplicating business data.
 
 It also reads the reference GUI's saved DOORS and QC selections and locates the latest matching Jenkins `*_ref` build. Selected `10_AS` and `40_Gen_SWXS` module CSV files become DOORS requirements. QC test instances are filtered by `qc_paths`; matching baseline requirements with `Requirement_Type=105` are loaded from `QC_Requirements.csv`. All records are normalized into the same `/api/tasks` response. Derived caches under `backend/.cache/` avoid reparsing the large exports until an input file or selection changes.

@@ -52,6 +52,30 @@ class TraceabilityTests(unittest.TestCase):
         self.assertEqual(meta["doorsAlmOnlyCount"], 0)
         self.assertEqual(meta["unresolvedDoorsReferences"], 0)
 
+    def test_lists_unlinked_and_not_required_requirements(self):
+        def door(key, raw_state, linked=()):
+            return {
+                "key": key, "id": f"DOORS-{key}", "source": "DOORS", "type": "SW Requirement",
+                "title": key, "project": "Demo", "iteration": "BL1", "status": "Done",
+                "rawState": raw_state, "linkedAlmIds": list(linked),
+            }
+
+        tasks = [
+            door("a", "accepted"),
+            door("b", "no_req"),
+            door("c", "Rejected", ["ALM-1"]),
+            door("d", "accepted", ["ALM-404"]),
+        ]
+
+        traceability, meta = build_traceability(tasks)
+        categories = {item["id"]: item["category"] for item in traceability}
+
+        self.assertEqual(categories, {"a": "unlinked", "b": "not-required", "c": "not-required", "d": "unresolved-alm"})
+        self.assertEqual(meta["requirementCount"], 2)
+        self.assertEqual(meta["notRequiredCount"], 2)
+        self.assertEqual(meta["unlinkedCount"], 1)
+        self.assertEqual(meta["linkedDoorCount"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

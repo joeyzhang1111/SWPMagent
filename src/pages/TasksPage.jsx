@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchTasks } from '../API/tasks.js';
+import AnalysisWorkspace from '../components/analysis/AnalysisWorkspace.jsx';
 
 const STATUSES = [
   ['To Do', 'todo'],
@@ -204,7 +205,8 @@ function TraceDetail({ trace }) {
 
 function TraceabilityMatrix({ traceability, meta, categoryFilter, onCategoryFilterChange }) {
   const [expanded, setExpanded] = useState(() => new Set());
-  const endToEndRate = meta.linkedDoorCount ? Math.round((meta.endToEndCount / meta.linkedDoorCount) * 100) : 0;
+  const requirementCount = meta.requirementCount || 0;
+  const endToEndRate = requirementCount ? Math.round(((meta.endToEndCount || 0) / requirementCount) * 100) : 0;
 
   const toggle = (id) => setExpanded((current) => {
     const next = new Set(current);
@@ -219,25 +221,28 @@ function TraceabilityMatrix({ traceability, meta, categoryFilter, onCategoryFilt
         <div className="health-chip"><span className="health-dot health-dot--warn" />DOORS→ALM only {meta.doorsAlmOnlyCount || 0}</div>
         <div className="health-chip"><span className="health-dot health-dot--warn" />DOORS→QC only {meta.doorsQcOnlyCount || 0}</div>
         <div className="health-chip" title={`${meta.unresolvedAlmReferences || 0} unresolved ALM reference edges`}><span className="health-dot health-dot--bad" />Unresolved ALM only {meta.unresolvedOnlyCount || 0}</div>
+        <div className="health-chip"><span className="health-dot health-dot--bad" />No link {meta.unlinkedCount || 0}</div>
+        <div className="health-chip"><span className="health-dot health-dot--info" />Not required {meta.notRequiredCount || 0}</div>
         <label className="trace-category-filter">
           <span>Trace category</span>
           <select className="filter-select" value={categoryFilter} onChange={(event) => onCategoryFilterChange(event.target.value)}>
-            <option value="">All trace links ({meta.linkedDoorCount || 0})</option>
-            <option value="end-to-end">End-to-end ({meta.endToEndCount || 0})</option>
-            <option value="doors-alm">DOORS→ALM only ({meta.doorsAlmOnlyCount || 0})</option>
-            <option value="doors-qc">DOORS→QC only ({meta.doorsQcOnlyCount || 0})</option>
-            <option value="unresolved-alm">Unresolved ALM only ({meta.unresolvedOnlyCount || 0})</option>
+            <option value="">All requirements ({meta.linkedDoorCount + (meta.unlinkedCount || 0) + (meta.notRequiredCount || 0) || 0})</option>
+            <option value="end-to-end" disabled={!meta.endToEndCount}>End-to-end ({meta.endToEndCount || 0})</option>
+            <option value="doors-alm" disabled={!meta.doorsAlmOnlyCount}>DOORS→ALM only ({meta.doorsAlmOnlyCount || 0})</option>
+            <option value="doors-qc" disabled={!meta.doorsQcOnlyCount}>DOORS→QC only ({meta.doorsQcOnlyCount || 0})</option>
+            <option value="unresolved-alm" disabled={!meta.unresolvedOnlyCount}>Unresolved ALM only ({meta.unresolvedOnlyCount || 0})</option>
+            <option value="unlinked" disabled={!meta.unlinkedCount}>No link ({meta.unlinkedCount || 0})</option>
+            <option value="not-required" disabled={!meta.notRequiredCount}>Not required ({meta.notRequiredCount || 0})</option>
           </select>
         </label>
         <div className="health-progress"><span className="health-progress-label">End-to-end coverage</span><div className="health-progress-bar"><div className="health-progress-fill" style={{ width: `${endToEndRate}%` }} /></div><span className="health-progress-pct">{endToEndRate}%</span></div>
       </div>
       {traceability.length === 0 ? <div className="task-state">No traceability records match the selected category and task filters.</div> : <div className="trace-matrix-wrap">
         <table className="matrix-table">
-          <thead><tr><th className="th-doors">DOORS Requirement</th><th className="th-alm">ALM Work Items</th><th className="th-qc">QC Requirements</th><th className="th-qc">QC Test Instances</th><th>Link State</th><th>Quality</th></tr></thead>
+          <thead><tr><th className="th-doors">DOORS Requirement</th><th className="th-alm">ALM Work Items</th><th className="th-qc">QC Requirements</th><th className="th-qc">QC Test Instances</th><th>Link State</th></tr></thead>
           <tbody>
             {traceability.map((trace) => {
               const passedTests = trace.qcTests.filter((node) => node.status === 'Done').length;
-              const qualityIssues = [...trace.qcRequirements, ...trace.qcTests].filter((node) => node.issueReason).length;
               const isExpanded = expanded.has(trace.id);
               return (
                 <React.Fragment key={trace.id}>
@@ -247,9 +252,8 @@ function TraceabilityMatrix({ traceability, meta, categoryFilter, onCategoryFilt
                     <td>{trace.qcRequirements.length.toLocaleString()}</td>
                     <td><span className={`status-badge status-badge--${ratioTone(passedTests, trace.qcTests.length)}`}>{passedTests}/{trace.qcTests.length} Passed</span></td>
                     <td><span className={`health-tag health-tag--${trace.health.level}`} title={trace.health.reason}><span className={`health-dot health-dot--${trace.health.level}`} />{trace.health.label}</span></td>
-                    <td>{qualityIssues ? <span className="task-issue">{qualityIssues} issue{qualityIssues === 1 ? '' : 's'}</span> : <span className="status-badge status-badge--ok">Clear</span>}</td>
                   </tr>
-                  {isExpanded && <tr className="matrix-detail-row"><td colSpan="6"><div className="expand-detail"><TraceDetail trace={trace} /></div></td></tr>}
+                  {isExpanded && <tr className="matrix-detail-row"><td colSpan="5"><div className="expand-detail"><TraceDetail trace={trace} /></div></td></tr>}
                 </React.Fragment>
               );
             })}
@@ -261,7 +265,7 @@ function TraceabilityMatrix({ traceability, meta, categoryFilter, onCategoryFilt
 }
 
 export default function TasksPage() {
-  const [view, setView] = useState('table');
+  const [view, setView] = useState('analysis');
   const [filters, setFilters] = useState({ query: '', project: '', iteration: '', type: '', source: '', status: '' });
   const [data, setData] = useState({ tasks: [], traceability: [], meta: {} });
   const [loading, setLoading] = useState(true);
@@ -269,6 +273,7 @@ export default function TasksPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [traceCategory, setTraceCategory] = useState('');
+  const [traceLoaded, setTraceLoaded] = useState(false);
 
   const loadTasks = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -276,6 +281,7 @@ export default function TasksPage() {
     try {
       const nextData = await fetchTasks({ refresh });
       setData(nextData);
+      setTraceLoaded(true);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to load tasks');
     } finally {
@@ -284,11 +290,15 @@ export default function TasksPage() {
   }, []);
 
   useEffect(() => {
+    if (view !== 'trace' || traceLoaded) return undefined;
     const controller = new AbortController();
     setLoading(true);
     setError('');
     fetchTasks({ signal: controller.signal })
-      .then(setData)
+      .then((nextData) => {
+        setData(nextData);
+        setTraceLoaded(true);
+      })
       .catch((requestError) => {
         if (requestError.name !== 'AbortError') {
           setError(requestError instanceof Error ? requestError.message : 'Unable to load tasks');
@@ -298,30 +308,29 @@ export default function TasksPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [traceLoaded, view]);
 
   const tasks = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
-    const applyTaskViewFilters = view !== 'trace';
     return data.tasks.filter((task) =>
       (!query || [task.id, task.title, task.module, task.component, task.assignee, task.issueReason].some((value) => String(value || '').toLowerCase().includes(query)))
       && (!filters.project || task.project === filters.project)
       && (!filters.iteration || task.iteration === filters.iteration)
-      && (!applyTaskViewFilters || !filters.type || task.type === filters.type)
-      && (!applyTaskViewFilters || !filters.source || task.source === filters.source)
-      && (!applyTaskViewFilters || !filters.status || task.status === filters.status)
+      && (!filters.type || task.type === filters.type)
+      && (!filters.source || task.source === filters.source)
+      && (!filters.status || task.status === filters.status)
     );
   }, [data.tasks, filters, view]);
 
   const filterOptions = useMemo(() => ({
-    projects: [...new Set(data.tasks.map((task) => task.project).filter(Boolean))].sort(),
-    iterations: [...new Set(data.tasks
-      .filter((task) => !filters.project || task.project === filters.project)
-      .map((task) => task.iteration)
+    projects: [...new Set(data.traceability.map((trace) => trace.requirement.project).filter(Boolean))].sort(),
+    iterations: [...new Set(data.traceability
+      .filter((trace) => !filters.project || trace.requirement.project === filters.project)
+      .map((trace) => trace.requirement.iteration)
       .filter(Boolean))].sort(),
     types: [...new Set(data.tasks.map((task) => task.type).filter(Boolean))].sort(),
     sources: [...new Set(data.tasks.map((task) => task.source).filter(Boolean))].sort(),
-  }), [data.tasks, filters.project]);
+  }), [data.tasks, data.traceability, filters.project]);
 
   const scopedTraceability = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
@@ -329,13 +338,21 @@ export default function TasksPage() {
       const nodes = [trace.requirement, ...trace.alm, ...trace.qcRequirements, ...trace.qcTests];
       return (!query || nodes.some((node) => [node.id, node.title, node.project, node.iteration].some((value) => String(value || '').toLowerCase().includes(query))))
         && (!filters.project || trace.requirement.project === filters.project)
-        && (!filters.iteration || nodes.some((node) => node.iteration === filters.iteration));
+        && (!filters.iteration || trace.requirement.iteration === filters.iteration);
     });
   }, [data.traceability, filters]);
 
+  // A category that has no rows under the current project/iteration filter must not stay selected.
+  useEffect(() => {
+    if (traceCategory && !scopedTraceability.some((trace) => trace.category === traceCategory)) setTraceCategory('');
+  }, [scopedTraceability, traceCategory]);
+
   const traceabilityMeta = useMemo(() => ({
     ...(data.meta.traceability || {}),
-    linkedDoorCount: scopedTraceability.length,
+    requirementCount: scopedTraceability.filter((trace) => trace.category !== 'not-required').length,
+    notRequiredCount: scopedTraceability.filter((trace) => trace.category === 'not-required').length,
+    unlinkedCount: scopedTraceability.filter((trace) => trace.category === 'unlinked').length,
+    linkedDoorCount: scopedTraceability.filter((trace) => !['not-required', 'unlinked'].includes(trace.category)).length,
     doorsWithAlm: scopedTraceability.filter((trace) => trace.alm.length > 0).length,
     doorsWithQc: scopedTraceability.filter((trace) => trace.qcRequirements.length > 0 || trace.qcTests.length > 0).length,
     endToEndCount: scopedTraceability.filter((trace) => trace.category === 'end-to-end').length,
@@ -351,10 +368,9 @@ export default function TasksPage() {
   );
 
   const fetchedAt = formatFetchedAt(data.meta.fetchedAt);
-  const currentTotal = view === 'trace' ? traceability.length : tasks.length;
+  const currentTotal = traceability.length;
   const pageCount = Math.max(1, Math.ceil(currentTotal / pageSize));
   const safePage = Math.min(page, pageCount);
-  const pagedTasks = useMemo(() => tasks.slice((safePage - 1) * pageSize, safePage * pageSize), [tasks, safePage, pageSize]);
   const pagedTraceability = useMemo(() => traceability.slice((safePage - 1) * pageSize, safePage * pageSize), [traceability, safePage, pageSize]);
 
   useEffect(() => {
@@ -363,14 +379,16 @@ export default function TasksPage() {
 
   return (
     <section className="page active" id="page-tasks">
-      <div className="page-toolbar">
+      <div className="task-mode-tabs">
+        <button type="button" className={view === 'analysis' ? 'active' : ''} onClick={() => setView('analysis')}>Reference Analysis</button>
+        <button type="button" className={view === 'trace' ? 'active' : ''} onClick={() => setView('trace')}>Traceability</button>
+      </div>
+      {view === 'analysis' && <AnalysisWorkspace />}
+      {view === 'trace' && <><div className="page-toolbar">
         <div className="toolbar-filters">
           <input className="task-search" type="search" value={filters.query} onChange={(e) => setFilters({ ...filters, query: e.target.value })} placeholder="Search ID, title, module, component, owner…" aria-label="Search tasks" />
           <select className="filter-select" value={filters.project} onChange={(e) => setFilters({ ...filters, project: e.target.value, iteration: '' })} aria-label="Task project"><option value="">All Projects</option>{filterOptions.projects.map((project) => <option key={project}>{project}</option>)}</select>
           <select className="filter-select" value={filters.iteration} onChange={(e) => setFilters({ ...filters, iteration: e.target.value })} aria-label="Task iteration"><option value="">All Iterations</option>{filterOptions.iterations.map((iteration) => <option key={iteration}>{iteration}</option>)}</select>
-          <div className="view-toggle">
-            {['table', 'board', 'trace'].map((item) => <button className={`view-btn${view === item ? ' active' : ''}`} key={item} onClick={() => setView(item)} title={item === 'trace' ? 'Traceability' : `${item} view`} aria-label={`${item} view`}><ViewIcon type={item} /></button>)}
-          </div>
         </div>
         <div className="task-sync">
           {fetchedAt && <span className="task-sync-meta">{data.meta.source || 'Backend'} · {data.meta.count ?? data.tasks.length} items · {fetchedAt}</span>}
@@ -381,12 +399,9 @@ export default function TasksPage() {
       {!error && loading && data.tasks.length === 0 && <div className="task-state" role="status">Loading tasks from the backend…</div>}
       {!error && !loading && data.tasks.length === 0 && <div className="task-state">The backend returned no work items for the configured iteration.</div>}
       {!error && data.tasks.length > 0 && <>
-        <TaskSummary tasks={tasks} meta={data.meta} />
-        {view === 'table' && <div className="task-view active"><TaskTable tasks={pagedTasks} filters={filters} setFilters={setFilters} filterOptions={filterOptions} /></div>}
-        {view === 'board' && <div className="task-view active"><KanbanBoard tasks={pagedTasks} filters={filters} setFilters={setFilters} filterOptions={filterOptions} /></div>}
-        {view === 'trace' && <div className="task-view active">{data.traceability.length > 0 ? <TraceabilityMatrix traceability={pagedTraceability} meta={traceabilityMeta} categoryFilter={traceCategory} onCategoryFilterChange={setTraceCategory} /> : <div className="task-state">No exact exported cross-source links are available.</div>}</div>}
+        <div className="task-view active">{data.traceability.length > 0 ? <TraceabilityMatrix traceability={pagedTraceability} meta={traceabilityMeta} categoryFilter={traceCategory} onCategoryFilterChange={setTraceCategory} /> : <div className="task-state">No exact exported cross-source links are available.</div>}</div>
         {currentTotal > 0 && <Pagination page={safePage} pageSize={pageSize} total={currentTotal} onPageChange={setPage} onPageSizeChange={setPageSize} />}
-      </>}
+      </>}</>}
     </section>
   );
 }

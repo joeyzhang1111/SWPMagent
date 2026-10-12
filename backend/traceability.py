@@ -4,6 +4,9 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
+# DOORS states that mean the requirement does not need to be implemented or tested.
+NOT_REQUIRED_STATES = {"no_req", "rejected", "canceled"}
+
 
 def _node(task: dict[str, Any], via: str = "") -> dict[str, Any]:
     node = {
@@ -70,11 +73,8 @@ def build_traceability(tasks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
 
     unresolved_alm_references = 0
     for doors_task in doors_tasks:
-        linked_ids = list(dict.fromkeys(doors_task.get("linkedAlmIds") or []))
-        if not linked_ids:
-            continue
         trace = trace_for(doors_task)
-        for alm_id in linked_ids:
+        for alm_id in dict.fromkeys(doors_task.get("linkedAlmIds") or []):
             linked_task = _choose_task(alm_by_id.get(str(alm_id), []), str(doors_task.get("project") or ""))
             if linked_task is None:
                 if alm_id not in trace["unresolvedAlmIds"]:
@@ -137,7 +137,12 @@ def build_traceability(tasks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
             node.get("issueReason")
             for node in [*trace["qcRequirements"], *trace["qcTests"]]
         )
-        if has_alm and has_qc:
+        if str(doors_by_key[trace["id"]].get("rawState") or "").strip().lower() in NOT_REQUIRED_STATES:
+            category = "not-required"
+            level = "info"
+            label = "Not required"
+            reason = "The requirement is marked no_req, rejected or canceled, so no ALM or QC link is expected."
+        elif has_alm and has_qc:
             category = "end-to-end"
             level = "warn" if has_qc_issue else "ok"
             label = "End-to-end"
@@ -152,11 +157,16 @@ def build_traceability(tasks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
             label = "Partial"
             missing = "QC" if has_alm else "ALM"
             reason = f"Exact cross-source links were found, but no loaded {missing} record completes the chain."
-        else:
+        elif trace["unresolvedAlmIds"]:
             category = "unresolved-alm"
             level = "bad"
             label = "Unresolved"
             reason = "The DOORS export contains ALM references that are outside the loaded ALM scopes."
+        else:
+            category = "unlinked"
+            level = "bad"
+            label = "No link"
+            reason = "No ALM or QC record is linked to this requirement."
         trace["health"] = {"level": level, "label": label, "reason": reason}
         trace["category"] = category
         traceability.append(trace)
@@ -167,16 +177,18 @@ def build_traceability(tasks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]
             str(item["requirement"].get("id") or ""),
         )
     )
+    not_required = sum(item["category"] == "not-required" for item in traceability)
+    unlinked = sum(item["category"] == "unlinked" for item in traceability)
     meta = {
         "method": "Exact exported identifiers only",
         "doorTaskCount": len(doors_tasks),
-        "linkedDoorCount": len(traceability),
+        "requirementCount": len(traceability) - not_required,
+        "notRequiredCount": not_required,
+        "unlinkedCount": unlinked,
+        "linkedDoorCount": len(traceability) - not_required - unlinked,
         "doorsWithAlm": sum(bool(item["alm"]) for item in traceability),
         "doorsWithQc": sum(bool(item["qcRequirements"] or item["qcTests"]) for item in traceability),
-        "endToEndCount": sum(
-            bool(item["alm"]) and bool(item["qcRequirements"] or item["qcTests"])
-            for item in traceability
-        ),
+        "endToEndCount": sum(item["category"] == "end-to-end" for item in traceability),
         "doorsAlmOnlyCount": sum(item["category"] == "doors-alm" for item in traceability),
         "doorsQcOnlyCount": sum(item["category"] == "doors-qc" for item in traceability),
         "unresolvedOnlyCount": sum(

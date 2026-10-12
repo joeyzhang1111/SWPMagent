@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar.jsx';
 import TopBar from './components/TopBar.jsx';
 import { ToastProvider } from './components/ToastProvider.jsx';
 import { NotificationsProvider } from './context/NotificationsContext.jsx';
+import { AnalysisProvider } from './context/AnalysisContext.jsx';
 import { resetCanvasLayout, useCanvasEditor } from './hooks/useCanvasEditor.js';
 import DashboardPage from './pages/DashboardPage.jsx';
 import BaselinePage from './pages/BaselinePage.jsx';
@@ -48,7 +49,9 @@ export default function App() {
   return (
     <NotificationsProvider>
       <ToastProvider>
-        <AppShell />
+        <AnalysisProvider>
+          <AppShell />
+        </AnalysisProvider>
       </ToastProvider>
     </NotificationsProvider>
   );

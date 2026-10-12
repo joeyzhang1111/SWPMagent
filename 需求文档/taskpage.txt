@@ -1,0 +1,472 @@
+Task Page 产品需求文档
+1. 文档信息
+项目	内容
+文档名称	SWPM Task Page 产品需求文档
+文档版本	V1.3
+文档状态	评审基线（包含已识别实现差异）
+编写日期	2026-10-09
+适用页面	src/pages/TasksPage.jsx
+评审人	待填写
+1.1 优先级定义
+优先级	定义
+P0	页面核心能力，缺失则本期不可发布
+P1	重要能力，可在核心流程可用后修复或完善
+P2	优化项，不阻塞核心业务流程
+1.2 需求状态说明
+本文档描述 Task Page 的已确认功能边界，同时作为开发和回归测试基线。文档中的“应”表示可验收要求；“待确认”表示尚未形成业务承诺，不应由开发人员自行假设。当前实现与需求之间已确认但尚未修复的差异记录在第 12.1 节；这些差异不改变验收要求。
+
+2. 背景与目标
+2.1 背景
+项目任务、系统需求、软件需求和测试执行信息分散在 ALM、DOORS 与 QC 中。用户需要分别打开多个系统才能判断当前项目有哪些工作项、需求是否完成、测试是否通过，以及 DOORS 需求是否已形成完整的 ALM 和 QC 追踪链路。
+
+原始系统中的字段、状态和标识方式不同，且数据规模较大。若只展示静态示例数据或未经验证的模糊关联，会导致项目判断与真实数据不一致。
+
+2.2 产品目标
+Task Page 应提供一个统一工作台，使用户能够：
+
+通过 ALMRTCrequest 登录 RTC，并按 Project Area、Timeline、完整 Iteration 路径配置和获取 ALM 数据。
+主动选择 Jenkins Project，从其最新成功 Build 拉取 DOORS/QC 导出，不创建新 Build。
+在需要生成新导出数据时，经用户确认后触发并跟踪一次 Jenkins Build；Build 成功后不自动 Pull。
+将三个来源的数据规范化为统一任务模型。
+通过表格和看板查看任务状态、负责人、到期时间及原始状态。
+使用导出系统中的精确标识重建 DOORS→ALM、DOORS→QC 追踪关系。
+按 Jenkins Project、已加载数据的 Iteration/Baseline、任务属性和 Trace category 筛选。
+在长时间构建和拉取过程中看到进度、阶段、日志和逐来源状态。
+2.3 成功定义
+本期完成的最低标准是：测试人员可以从空页面开始配置并获取 ALM 数据、从最新成功 Jenkins Build 获取 DOORS/QC 数据，并在获授权的测试 Job 上完成一次 Trigger Build；三种操作互不隐式触发。
+
+3. 用户与使用场景
+3.1 目标用户
+用户角色	主要诉求
+PCM	查看项目工作量、未完成项、质量问题和端到端覆盖情况
+数据维护/支持人员	通过 Pull 日志定位 Jenkins、RTC、文件或配置问题
+3.2 核心场景
+用户首次进入 Task Page，页面不自动访问 Task 后端，也不展示历史任务。
+用户展开 Project 下拉框，系统从 Jenkins 获取当前 job 列表。
+用户通过 ALMRTCrequest 登录 RTC，选择 Timeline 和完整 Iteration Scope，再明确点击获取 ALM 数据。
+用户选择 Jenkins Project 后点击 Pull Jenkins (QC / DOORS)，读取已有的最新成功 Build。
+用户需要生成新数据时，点击 Trigger Build，确认 Project 后仅等待本次 Queue ID 对应的 Build 完成。
+操作完成后，用户在 Table、Kanban、Traceability 三种视图之间切换。
+用户按 Jenkins Project、已加载数据的 Iteration/Baseline、关键字、Type、Source、Status 或 Trace category 缩小结果范围。
+用户展开一条 Traceability 记录，检查 DOORS、ALM、QC 的具体节点及链接依据。
+某一数据源不可用时，用户根据页面错误和进度日志判断失败原因，同时保留操作前已展示的数据。
+4. 范围
+4.1 本期范围内
+Jenkins Project 列表读取。
+用户通过独立操作主动触发 ALM 或 DOORS/QC 数据拉取。
+经用户确认后触发新的 Jenkins Build；成功后不自动 Pull。
+拉取进度、阶段、实时日志和结果提示。
+ALM、DOORS、QC 统一任务模型与状态标准化。
+Task Summary 统计。
+Task Table。
+Kanban Board。
+Traceability Matrix 与详情展开。
+Jenkins Project、已加载 Iteration/Baseline、关键字、类型、来源、状态和追踪分类筛选。
+分页及每页 25/50/100 条切换。
+基于精确导出标识的跨来源链接重建。
+数据源缺失、权限失败、并发 Pull 等异常提示。
+4.2 本期范围外
+页面打开时自动触发 Jenkins Build 或自动 Pull。
+未经用户确认触发 Jenkins Build。
+同时触发多个 Jenkins Project Build。
+修改 ALM、DOORS、QC 原始记录。
+Pull/Build 历史持久化（运行中操作取消属于本期范围）。
+5. 总体业务流程
+用户打开 Task Page
+  └─ 不请求 Task 数据，页面为空
+
+用户展开 Project
+  └─ SWPM 内置 Jenkins 客户端调用 get_all_projects()
+       └─ Jenkins /api/json 返回 job 名称
+
+用户点击 ALMRTCrequest → Get ALM data from RTC
+  ├─ 使用已保存的 Project Area + Timeline + 完整 Iteration 路径 Scope
+  ├─ 通过 RTC 刷新所选 Scope，并解析 ALM 数据
+  └─ 将 ALM 结果返回当前浏览器内存
+
+用户点击 Pull Jenkins (QC / DOORS)
+  ├─ 查询所选 job 的 lastSuccessfulBuild
+  ├─ 复用或下载该 Build 的 *_ref.zip，并解压 CSV
+  └─ 解析 DOORS/QC 数据并返回当前浏览器内存
+
+用户点击 Trigger Build
+  ├─ 明确确认当前 Jenkins Project
+  ├─ 调用 buildWithParameters 并记录 Jenkins Queue ID
+  ├─ 通过该 Queue ID 定位本次 Build 编号并轮询状态
+  └─ 报告结果；成功后不执行 Pull
+
+6. 功能需求
+6.1 页面初始化与数据生命周期
+ID	优先级	需求	可验证结果
+FR-INIT-001	P0	用户进入 Task Page 时，页面不得自动调用 Task 数据、Project 列表、Pull 或 Build 接口。	浏览器 Network 中没有 /api/tasks/projects、POST /api/tasks/pull、POST /api/tasks/build 或状态请求。
+FR-INIT-002	P0	首次进入且尚未 Pull 时，页面应展示空状态和主动 Pull 引导。	显示“No task data is loaded…”；不展示模拟任务。
+FR-INIT-003	P0	页面刷新后，当前任务结果应清空，不从 SWPM 快照恢复。	浏览器刷新后回到初始空状态。
+FR-INIT-004	P0	页面工具栏应提供 ALMRTCrequest、Pull Jenkins (QC / DOORS) 和 Trigger Build 三个职责明确的入口。	三个按钮清晰可见，互不隐式触发。
+FR-INIT-005	P1	Pull 失败时，不得清空当前页面已有的成功数据。	先成功 Pull，再制造失败；失败后原任务仍可查看。
+6.2 Project 选择
+ID	优先级	需求	可验证结果
+FR-PROJ-001	P0	用户首次聚焦 Project 下拉框时，系统应调用 Jenkins Project 列表接口。	SWPM 内置后端使用 get_all_projects() 直接访问 Jenkins；前端调用 GET /api/tasks/projects。
+FR-PROJ-002	P0	Project 下拉框中的可操作 Project 必须来源于 Jenkins /api/json 返回的 job 名称；不得把已加载任务中的业务 Project/别名追加为 Jenkins job 选项。	新 Jenkins job 在接口返回后可出现在下拉框，即使当前任务中没有该 Project；仅存在于 task.project 的业务别名不作为可触发 Pull/Build 的 Project 选项。
+FR-PROJ-003	P1	Project 列表加载期间应显示 Loading 状态；加载失败应在页面工具栏状态区域显示可读错误。	下拉框显示“Loading Jenkins projects…”；失败信息出现在工具栏状态文字中，页面不崩溃。
+FR-PROJ-004	P1	当用户尚未选择 Project 且 SWPM 本地配置中的 last_project 仍存在于 Jenkins job 列表时，系统应恢复该 Project。（记住你上一次选择了哪个 Project，下次打开下拉框时自动帮你选回来。）	首次加载项目列表后自动选择有效 last_project。
+FR-PROJ-005	P0	用户更换 Jenkins Project 时，已加载数据的 Iteration/Baseline 查看筛选应被清空。	Project change 后查看筛选回到 All Iterations / Baselines。
+FR-PROJ-006	P0	Jenkins 返回的 Project 即使不存在于 SWPM 本地 selection_states，普通 Pull 也不得仅因缺少选择配置而被拒绝。	未配置 Project 可进入 Pull：DOORS/QC 使用 Artifact 自动发现规则；ALM 无 scope 时明确标记为 skipped。
+6.3 主动 Pull
+ID	优先级	需求	可验证结果
+FR-PULL-001	P0	DOORS/QC 读取只有在用户点击 Pull Jenkins (QC / DOORS) 后才启动；它与 ALM 和 Build 流程相互独立。	点击后仅发送 POST /api/tasks/pull?project=...。
+FR-PULL-002	P0	Jenkins Pull 只接受明确选择的 Jenkins Project，不接受 Iteration/Scope 参数。	Project 为空返回 HTTP 400；接口无 Iteration 参数。
+FR-PULL-003	P0	Pull Jenkins (QC / DOORS) 不得调用 Jenkins trigger_build() 或 RTC；只有独立的 Build/ALM 操作可访问对应来源。	网络记录中无 Jenkins Build 触发请求或 RTC 请求。
+FR-PULL-004	P0	系统应查询所选 Project 的 lastSuccessfulBuild。	日志包含“Reading the latest successful data version”及 Build 编号。
+FR-PULL-005	P0	系统应按第 7.1 节缓存规则获得 Jenkins Artifact 和 ALM 数据。	日志明确出现远端或缓存路径，且行为与缓存状态一致。
+FR-PULL-006	P0	Pull 应作为后台任务执行，启动接口立即返回 job ID，前端轮询任务状态。	POST 返回 HTTP 202、status=running 和 job ID；页面持续更新。
+FR-PULL-007	P0	同一后端实例同一时间只允许一个 Pull 或 Build & Pull 操作。	第二个并发请求返回 HTTP 409 和明确提示。
+FR-PULL-008	P0	Pull 成功后，应一次性替换当前浏览器中的 Tasks、Traceability 和 Meta。	页面统计、三种视图和更新时间同时更新。
+FR-PULL-009	P1	完成结果被前端消费后，后端应移除该 Pull job 结果。	使用 consume=true 获取终态后，再次查询返回 404。
+FR-PULL-010	P0	普通 Pull 运行期间，用户点击 Cancel & Close 应终止本次本地 worker 并关闭进度窗口；普通 Pull 不涉及 Jenkins queue item 取消。	job 进入 Cancelled，当前页面已有成功数据保持不变，Jenkins 不收到 queue cancellation 请求。
+6.4 Jenkins Trigger Build
+ID	优先级	需求	可验证结果
+FR-BLD-001	P0	页面应提供与 Pull 明确区分的 Trigger Build 按钮。	按钮文字和行为不同。
+FR-BLD-002	P0	Build 操作必须要求用户明确选择 Jenkins Project，不得以空值触发。Project 为空时点击按钮只加载 Jenkins Project 并恢复有效 last_project，用户必须再次点击确认。	首次点击不触发 Build；直接以空 Project 调用接口返回 HTTP 400。
+FR-BLD-003	P0	用户点击 Build 按钮后，系统必须显示包含 Project 名称的确认提示；只有确认后才能发送请求。	取消确认时无 POST /api/tasks/build 请求。
+FR-BLD-004	P0	SWPM 内置后端应先调用 get_last_build_info(project) 记录旧编号，再调用 trigger_build(project)，即 POST Jenkins buildWithParameters。	测试桩验证调用顺序、Project 和调用次数均正确。
+FR-BLD-005	P0	触发后必须保存 Queue ID，通过 queue item 的 executable 确认本次 Build 编号，再轮询该 Build。	日志和结果同时包含 Queue ID 与 Build 编号。
+FR-BLD-006	P0	新 Build 失败、取消、超时或没有产生新编号时，操作必须失败，不得将旧 Build 数据报告为新 Build 结果。	Failed 状态包含 Build 编号/状态或 timeout 原因；页面旧数据保留。
+FR-BLD-007	P0	新 Build 成功后不得自动 Pull、下载 Artifact 或刷新 ALM。	完成结果只报告本次 Build；页面原数据不变。
+FR-BLD-008	P1	Build 等待时间默认 600 秒，并允许通过 SWPM_JENKINS_TRIGGER_TIMEOUT_SECONDS 调整；等待期间应区分 Jenkins 排队和正在执行。	超时配置生效；日志显示队列原因、Build 编号和实际超时原因。
+FR-BLD-009	P0	Trigger Build 应使用与 Pull 相同的后台 job、进度窗口、日志、并发锁和结果消费机制。	启动返回 HTTP 202/job ID；运行中第二个操作返回 409。
+FR-BLD-010	P0	Trigger Build 仍在运行时，用户关闭进度窗口应取消本地 worker；若本次 queue item 尚未启动，则校验 Project 后取消该 item。已开始执行的 Jenkins Build 不得被自动终止。	运行态按钮显示 Cancel & Close；若已有 executable，结果明确说明 Build 未停止。
+6.5 进度和日志
+ID	优先级	需求	可验证结果
+FR-LOG-001	P0	Pull 或 Build & Pull 开始后应打开模态进度窗口，展示阶段、0–100 百分比、状态和日志。	窗口随操作状态更新，进度不小于上一次值。
+FR-LOG-002	P0	日志至少应区分 Starting、Jenkins Build（Build 操作）、DOORS/QC、ALM、Source data、Local data、Traceability、Complete/Failed 阶段。	正常操作日志可识别各阶段。
+FR-LOG-003	P0	远端数据和缓存数据必须可从日志区分。	Jenkins 显示 Downloading 或 Using local export；ALM 显示 Pulling scope 或 Using cached scope。
+FR-LOG-004	P1	日志应自动滚动到最新记录，并同步输出到浏览器 Console。	新日志到达后可见，Console 有对应 [Pull] 记录。
+FR-LOG-005	P0	操作运行中取得 job ID 后，Close/× 和页脚按钮应执行 Cancel & Close；创建 job ID 之前按钮保持禁用；操作结束或失败后直接关闭窗口。	Running 且有 job ID 时可取消并关闭；无 job ID 或正在 cancelling 时按钮禁用；终态点击只关闭窗口。
+FR-LOG-006	P1	后端单个操作最多保留最近 1,000 条日志，避免无限增长。	超过限制时最早日志被移除。
+6.6 Summary
+ID	优先级	需求	可验证结果
+FR-SUM-001	P0	数据加载后应显示 Visible、ALM、DOORS、QC、Open、Quality issues 六项统计。	六张统计卡均显示整数。
+FR-SUM-002	P0	Summary 必须基于当前可见任务动态计算。	改变 Project、Iteration、搜索或任务筛选后数值同步变化。
+FR-SUM-003	P0	Open 定义为标准状态不等于 Done 的任务数。	Open = count(status != Done)。
+FR-SUM-004	P0	Quality issues 定义为 issueReason 非空的任务数。	与筛选后 issueReason 非空记录数量一致。
+FR-SUM-005	P1	某数据源解析不可用时，应显示 source unavailable 警告并提供详细 tooltip。	制造缺失文件后出现对应来源警告。
+6.7 全局筛选和搜索
+ID	优先级	需求	可验证结果
+FR-FLT-001	P0	Project、Iteration 和关键字搜索应作用于 Table、Kanban 和 Traceability。	三个视图切换后筛选范围保持一致。
+FR-FLT-002	P0	Task 搜索应忽略大小写，并匹配 ID、Title、Module、Component、Owner、Issue Reason。	任一字段包含关键字时任务可见。
+FR-FLT-003	P0	Traceability 搜索应忽略大小写，并匹配所有节点的 ID、Title、Project、Iteration。	ALM/QC 子节点命中时其 DOORS Trace 仍显示。
+FR-FLT-004	P0	Iteration 选项应从当前 Project 范围内已加载任务动态去重并排序。	更换 Project 后 Iteration 选项变化。
+FR-FLT-005	P1	任一筛选、视图、分页大小或 Trace category 变化时，页码应回到第 1 页。	在非第一页改变条件后显示 Page 1。
+6.8 Task Table
+ID	优先级	需求	可验证结果
+FR-TBL-001	P0	Table 应显示 ID、Source、Type、Title、Project/Iteration、Owner、Due、Status、Raw Status。	列名和字段顺序与要求一致。
+FR-TBL-002	P0	Table 中不得显示旧的 Quality 百分比列；最后一列必须是真实来源状态 Raw Status。	最后一列值来自 rawState。
+FR-TBL-003	P0	Type、Source、Status 三个筛选器只显示在 Table 和 Kanban 内，不显示在 Traceability。	切换 Traceability 后三个筛选器不可见。
+FR-TBL-004	P0	Type 和 Source 选项应从当前加载数据动态去重生成；Status 固定为 To Do、In Progress、In Review、Done。	新类型可出现；状态只有四类。
+FR-TBL-005	P1	无匹配任务时应显示明确空状态，不隐藏筛选器。	筛选到零条时仍能修改三个筛选条件。
+6.9 Kanban Board
+ID	优先级	需求	可验证结果
+FR-KAN-001	P0	Kanban 应固定展示 To Do、In Progress、In Review、Done 四列。	每列显示对应任务数量。
+FR-KAN-002	P0	卡片应显示 Title、Issue Reason（存在时）、Type、Source、Due 和 Owner initials。	字段与任务数据一致。
+FR-KAN-003	P1	Due 早于当前时间且状态不是 Done 时，应标记 overdue。	构造逾期未完成任务后样式变化；Done 不标记。
+FR-KAN-004	P0	Table 与 Kanban 使用相同的 Type、Source、Status 筛选条件。	两种视图的匹配任务集合一致。
+6.10 分页
+ID	优先级	需求	可验证结果
+FR-PAGE-001	P1	Table、Kanban、Traceability 均应支持分页。	超过每页大小后可进入下一页。
+FR-PAGE-002	P1	每页大小仅允许 25、50、100。	下拉框只有三个选项。
+FR-PAGE-003	P1	分页应显示当前起止序号、总数、页码和总页数。	例如 1–50 of 18,404、Page 1 / 369。
+FR-PAGE-004	P1	首页禁用 Previous，末页禁用 Next。	按钮状态正确。
+6.11 Traceability Matrix
+ID	优先级	需求	可验证结果
+FR-TRC-001	P0	Traceability 只能使用第 7.6 节定义的精确标识，不得使用标题相似度或语义猜测。	删除精确 ID 后，即使标题相同也不得建立链接。
+FR-TRC-002	P0	Matrix 应以 DOORS Requirement 为一行锚点，展示 ALM Work Items、QC Requirements、QC Test Instances、Link State 和 Quality。	六列内容与关联节点一致。
+FR-TRC-003	P0	用户点击一行后，应展开 DOORS→ALM→QC 三个 lane，并显示每条链接的 via 依据。	展开后可见 DOORS external WorkItemID、QC RB_DoorsLinks 等。
+FR-TRC-004	P0	ALM ID 在 DOORS export 中存在但不在已加载 ALM scopes 时，应显示 Outside loaded ALM scopes，不得创建虚假 ALM 节点。	unresolved ID 显示占位节点和 exact-ID 说明。
+FR-TRC-005	P0	Trace category 应支持 All、End-to-end、DOORS→ALM only、DOORS→QC only、Unresolved ALM only。	选择后只显示对应类别。
+FR-TRC-006	P0	四类计数和 End-to-end coverage 应随 Project、Iteration 和搜索条件动态重算，不得使用静态数字。	改变上述条件后计数和百分比同步变化。
+FR-TRC-007	P0	End-to-end coverage = round(End-to-end / All trace links × 100%)；分母为 0 时结果为 0%。	使用已知数据验证计算结果。
+FR-TRC-008	P0	QC Test 显示 Done tests / total tests Passed；Quality 显示 QC Requirement 与 QC Test 中 issueReason 非空的节点数，否则显示 Clear。	与展开节点逐条核对一致。
+FR-TRC-009	P1	若没有任何精确导出链接，应显示“No exact exported cross-source links are available.”	没有 Trace 记录时显示空状态。
+7. 数据来源与业务规则
+7.1 数据新鲜度与缓存规则
+Pull 是“基于最新成功 Jenkins Build 的缓存感知拉取”，不是“每次强制从所有远端重新下载”。必须按以下规则解释数据来源：
+
+数据	规则	远端证据	缓存证据
+Project 列表	用户首次展开 Project 时调用 Jenkins /api/json	Project 接口成功返回 jobs	本页面不保存 Project 快照
+Jenkins Build 信息	每次 Pull 查询 lastSuccessfulBuild	日志含最新成功 Build 编号	不适用
+Trigger Build	明确调用 buildWithParameters 并通过 Queue ID 跟踪本次 Build；SUCCESS 后结束	Queue item #q、Build #n completed successfully	不允许用旧 Build 冒充本次触发结果；不自动 Pull
+DOORS/QC Artifact	若 {project}_{build}_ref.zip 已存在则复用，否则从该 Build 下载 _ref.zip	Downloading ..._ref.zip	Using local export ...
+ALM scopes	仅由 ALMRTCrequest 使用保存的完整 Scope 明确请求；Scope 由 Project Area、Timeline 和完整 Iteration 路径组成	Pulling scope n/m	只有明确允许缓存的流程才显示 Using cached scope n/m
+SWPM 结果	后端读取准备好的 ALM/DOORS/QC 数据，在内存中重建 Tasks 与 Traceability	Loaded n tasks and rebuilt traceability	不写 combined/derived SWPM snapshot
+生成新 Jenkins 导出时先使用 Trigger Build；Build 成功后由用户明确点击 Pull Jenkins。ALM 则通过 ALMRTCrequest 独立获取。
+
+7.2 选择范围
+来源	范围配置
+ALM	使用 SWPM 本地 config.json 中所选 Jenkins Project 对应的全部 alm_scope_displays；不再接受第二个 Iteration 过滤参数。未配置 ALM Scope 时不猜测其他范围，明确标记为 skipped
+DOORS	已配置 Project 使用 10_AS/as_file_names + as_features 与 40_Gen_SWXS/xs_file_names + xs_features；Project 不在 selection_states 时，从本次 Artifact 自动发现全部 *-module.csv 和 baseline
+QC	已配置 Project 使用 qc_paths 前缀匹配 TestSet folder path；Project 不在 selection_states 时，从本次 Artifact 自动发现并解析全部 QC 路径
+7.3 统一任务字段
+字段	含义	UI 使用位置
+key	来源内唯一渲染键	行/卡片唯一性
+id	标准化 ID，如 ALM-*、DOORS-*、QC-TI-*、QC-REQ-*	Table、Traceability
+source	ALM、DOORS 或 QC	Summary、筛选、标签
+type	来源类型标准化结果	Table、Kanban、筛选
+title	工作项、需求或测试名称	所有视图
+project	业务展示 Project；部分 Jenkins job 使用映射后的简称	筛选和范围展示
+iteration	已加载记录的展示上下文：ALM 为完整 Iteration 路径，DOORS/QC 为 Baseline；不是操作请求参数	查看筛选和范围展示
+component	Filed Against、Allocation、Feature/Test Configuration 等来源字段	搜索和范围展示
+module	DOORS module、QC folder/test set 等	搜索和标题补充
+assignee	Owner、修改人、Tester 或 Author；缺失为 Unassigned	Table、Kanban、搜索
+due	可解析为 YYYY-MM-DD 的到期/计划执行日期	Table、Kanban overdue
+status	四类统一状态	Table、Kanban、筛选、统计
+rawState	来源系统的真实原始状态	Task Table 最后一列
+priority	统一 High/Medium/Low	后端任务模型，当前页面不单独展示
+maturity	To Do=0、In Progress=50、In Review=85、Done=100	后端兼容字段，当前页面不展示百分比
+issueReason	按来源质量规则产生的问题说明	Summary、Kanban、Trace Quality
+7.4 状态映射
+ALM
+原始 State 包含关键字	标准状态
+closed、resolved、verified、done、complete	Done
+review、approve、validate	In Review
+progress、started、implement、active	In Progress
+其他或空	To Do
+DOORS
+原始状态	标准状态
+accepted、validated、passed、ok、no_req、rejected、canceled	Done
+accepted_w_rem、in review、review、reviewed	In Review
+in progress、analyzed、analysis、implemented	In Progress
+其他或空	To Do
+QC
+原始状态	标准状态
+Passed	Done
+In Progress、Running、Executing	In Progress
+Failed、Blocked、Not Completed	In Review
+其他或空	To Do
+7.5 来源解析和质量规则
+ALM
+ID 自动补充 ALM- 前缀。
+Epic 标准化为 EPIC；包含 Story 的类型标准化为 Story；Task/Work Task 标准化为 Task；其他类型保留真实类型。
+Priority 根据 Severity 映射：Critical/Blocker/High/Major/Urgent→High，Low/Minor/Trivial→Low，其他→Medium。
+页面不为 ALM 人工推导 issueReason。
+DOORS
+已配置 Project 只装载配置中选中的 module 和 baseline；未配置 Project 自动发现本次 Artifact 中的全部 module 和 baseline。
+10_AS 类型显示为 Requirement；40_Gen_SWXS 显示为 SW Requirement。
+10_AS 质量问题包括：分析未完成、Rejected 未获得客户同意、Change Required 缺失、FNID 缺失、Baseline 缺失。
+40_Gen_SWXS 在 Accepted/Validated 时检查：Test Status 是否 Passed、Review Status 是否 OK、是否精确链接 Story。
+有任一问题时 Priority=High，否则 Medium。
+QC
+已配置 Project 的 Test Instance 只装载 folder path 匹配 qc_paths 的记录；未配置 Project 自动发现本次 Artifact 中的全部 QC folder path。
+QC Requirement 只装载与已选 Test Instance baseline 匹配且 Requirement_Type=105 的记录。
+QC Requirement 与 Test 的关系来自 QC_Req2Test.csv。
+Test Instance 的执行状态不是 Passed 且 RB_Comment 为空时产生 issueReason。
+QC Requirement 的 Direct Cover Status 不是 Passed 时产生 issueReason。
+有 issueReason 时 Priority=High，否则 Medium。
+7.6 精确 Traceability 规则
+链接	精确字段/文件	说明
+DOORS→ALM	DOORS external CSV 的 WorkItemID；缺失时可从 Target_URL 末尾提取数字 ID	标准化为 ALM-* 后与已加载 ALM ID 精确比较
+QC Test Instance→DOORS	RB_DoorsLinks	分号拆分，按 Project+DOORS ID 优先匹配
+QC Requirement→DOORS	RB_Doors_Identifier	精确匹配 DOORS Object Identifier
+QC Requirement→QC Test	QC_Req2Test.csv 的 REQ_ID + TEST_ID	仅链接已选范围内 Test Instance
+当同一 DOORS ID 在多个 Project 中出现时，优先按 Project+ID 匹配；只有全局候选唯一时才允许跨 Project key 回退。ALM 同 ID 多候选时优先选择 Project 相同的记录，否则使用第一个候选。
+
+7.7 Trace category 定义
+Category	判定条件	Link State
+End-to-end	DOORS 同时存在已加载 ALM 节点和至少一个 QC Requirement/Test 节点	End-to-end；QC 有 issue 时为 warning，否则为 clear/ok
+DOORS→ALM only	存在已加载 ALM 节点，不存在 QC 节点	Partial
+DOORS→QC only	存在 QC 节点，不存在已加载 ALM 节点；即使同时有 unresolved ALM ID，仍归此类	Partial
+Unresolved ALM only	不存在已加载 ALM 和 QC 节点，但 DOORS export 包含未解析 ALM ID	Unresolved
+只有形成至少一条精确链接或包含 unresolved ALM reference 的 DOORS Requirement 才进入 Traceability Matrix；没有任何链接信息的 DOORS Requirement 不进入 Matrix 分母。
+
+8. 异常和边界情况
+ID	场景	系统响应	验收要求
+EX-001	Jenkins Project 列表不可用	Project 接口返回错误，页面显示可读信息	不得伪造 Project 列表，不得导致页面崩溃
+EX-002	未选择 Project 且没有有效 last_project	Pull 失败并提示选择 Project	不得默认选择任意 Jenkins job
+EX-003	Project 不在 SWPM 本地 selection_states 中	Pull 继续执行；DOORS/QC 从该 Project 的 Jenkins Artifact 自动发现范围，ALM 标记为 skipped 并说明没有本地 scope	不得套用其他 Project 的 modules、paths 或 ALM scopes
+EX-004	已有 Pull 正在运行	新请求返回 409	已运行 Pull 不受影响
+EX-005	Jenkins 没有 latest successful build 或 _ref.zip	DOORS/QC 阶段记录错误	错误必须包含来源和原因
+EX-006	Artifact 中缺少 DOORS module 或 QC 文件	对应来源在 meta 中记录 missing/parse error；只有来源加载器整体失败时显示 source unavailable	其他可用来源继续；缺文件的专用 UI 提示列为 DEC-004 的同类待完善项
+EX-007	RTC credential 缺失或 AUTH_FAILED	ALM 阶段失败并显示登录错误	不得把认证失败显示为成功远端拉取
+EX-008	某个 ALM scope 拉取失败	日志标记失败 scope；其他 scope 继续	至少一个 scope 成功时 ALM source result 返回 scopeErrors；失败详情可由日志和结果 metadata 定位
+EX-009	所有远端来源均失败	Pull job 为 Failed	当前页面旧数据保持不变
+EX-010	部分远端来源失败但本地仍有可解析数据	页面可以返回 partial result，但必须展示对应 pull.errors	用户能够区分最新远端成功数据和本地可用数据
+EX-011	筛选结果为 0	显示视图级空状态，筛选控件保留	用户无需刷新即可取消筛选
+EX-012	Trace category 结果为 0	显示 Traceability 空状态	顶部动态统计仍显示当前范围数据
+EX-013	任务数超过来源最大解析数量	按配置上限截断并在 meta 标记 truncated	不得无提示地假设数据完整；UI 显式提示属于 P1 待完善项
+EX-014	Pull 超过 SWPM_PULL_TIMEOUT_SECONDS	终止 worker，job 进入 Failed	错误包含 timeout 秒数
+EX-015	Build 请求被 Jenkins 拒绝	Build job 进入 Failed	错误明确包含 Trigger build failed；不得继续 Pull
+EX-016	新 Build 状态为 FAILURE、ABORTED 等终态	Build job 进入 Failed	显示新 Build 编号和真实终态；页面旧数据保留
+EX-017	在 Build timeout 内未出现新编号或未完成	Build job 进入 Failed	区分“没有新 Build”和“新 Build 未完成”；不得回退成成功 Pull
+EX-018	用户对运行中的普通 Pull 或 Build & Pull 点击 Cancel & Close	两种操作均终止本地 worker；仅 Build & Pull 存在本次 Jenkins queue item 时，校验 Project 后取消该 queue item	普通 Pull 不发送 Jenkins queue cancellation；不取消其他 Project/操作的队列项；不停止已经运行的 Build；取消失败时窗口保留并显示错误
+9. 非功能需求
+9.1 性能与容量
+ID	优先级	需求	验收方式
+NFR-PERF-001	P0	页面应通过分页展示大数据集，默认每页 50 条，不得一次渲染全部任务 DOM。	使用当前 AeroHT 18,404 条数据验证页面可操作且 DOM 行数受分页限制。
+NFR-PERF-002	P0	长时间 Pull 或 Build & Pull 必须提供持续进度和日志，不以同步请求阻塞页面。	操作期间可以查看日志，浏览器页面不进入无响应状态。
+NFR-PERF-003	P1	DOORS、QC 单来源默认最多解析 50,000 条，可通过环境配置调整。	超限时 truncated=true。
+NFR-PERF-004	待确认	端到端 Pull 时长依赖 Jenkins、RTC 和 scope 数量，本期不承诺固定秒数 SLA。	业务方与基础设施团队确认后补充环境、数据量和 P95 指标。
+9.2 安全
+ID	优先级	需求	验收方式
+NFR-SEC-001	P0	Jenkins/RTC 用户名、密码、session 和 credential 文件不得发送到浏览器。	检查 API response、前端状态和 Network payload。
+NFR-SEC-002	P0	日志不得打印密码、完整认证 header 或 session cookie。	搜索前后端日志，无敏感值。
+NFR-SEC-003	P0	凭据由 SWPM 后端环境变量或本地 credential 文件管理；Task Page 前端只消费结果。	前端源码和 API response 不包含远端凭据。
+NFR-SEC-004	P1	RTC TLS 校验应保持启用；内部 CA 应通过受信任 CA bundle 配置。	测试环境验证证书策略。
+NFR-SEC-005	P0	触发 Jenkins Build 属于外部写操作，必须由用户选择 Project 并在确认提示中再次确认。	未选择或取消确认时不产生 Jenkins POST 请求。
+9.3 可靠性和一致性
+ID	优先级	需求	验收方式
+NFR-REL-001	P0	一次 Pull 的 DOORS/QC 必须对应同一个 Jenkins successful Build。	Meta 与日志中的 Build 编号一致。
+NFR-REL-002	P0	Traceability 必须在 Tasks 装载完成后由同一批数据重建。	Trace 节点均能在本次任务集合或 unresolved 列表中解释。
+NFR-REL-003	P0	Pull 失败不得破坏页面最后一次成功结果。	执行失败回归测试。
+NFR-REL-004	P1	API 错误必须返回明确 HTTP 状态及可读 detail。	覆盖 404、409、502 和 Pull failed。
+NFR-REL-005	P0	Build & Pull 返回的数据必须来自本次触发的新成功 Build；Build 编号应在 trigger metadata、Artifact 和日志中一致。	使用测试桩和测试环境核对三个位置的编号。
+NFR-REL-006	P0	用于判断 ALM 是否需要强制刷新的 last_build 必须按 Jenkins Project 分别记录，不得使用一个全局 Build 编号比较不同 Project。	交替 Pull 两个 Build 编号相同或不同的 Project，各自的 ALM 刷新判断只受本 Project 历史影响。
+9.4 架构独立性
+ID	优先级	需求	验收方式
+NFR-ARCH-001	P0	Jenkins、RTC/ALM、DOORS、QC 的拉取和解析实现必须包含在 SWPM 项目内；运行时不得导入、启动或读取参考 GUI 项目的代码、Python 环境或 .app_cache。	将参考 GUI 目录移走或把旧参考路径设置为不存在后，Project 列表、Pull 和本地解析仍可运行。
+NFR-ARCH-002	P0	SWPM 运行数据必须存放在本项目 backend/.app_cache 或显式配置的 SWPM 路径内。	Pull 结果中的 Artifact、ALM cache 和 config 路径均位于 SWPM 路径，且源码中不存在参考 GUI 的绝对路径。
+9.5 易用性与可访问性
+ID	优先级	需求	验收方式
+NFR-UX-001	P1	所有下拉框和视图按钮必须提供可识别的 aria-label/title。	使用浏览器 accessibility tree 检查。
+NFR-UX-002	P1	Progress 使用标准 progressbar 属性，日志和状态使用 live region。	检查 role、aria-valuenow 和 aria-live。
+NFR-UX-003	P1	状态、来源和问题不能只依赖颜色表达，必须同时显示文字。	灰度或高对比检查仍可识别。
+10. 验收标准
+以下用例全部通过，且无 P0 缺陷时，Task Page V1.2 才可验收。
+
+AC-01 初始页面无后端动作
+Given 用户新开或刷新 Task Page
+Then 页面任务为空并显示 Pull 引导
+And 不调用 Project、Pull 或 Pull status API
+And 页面没有 Refresh 按钮
+AC-02 Jenkins Project 来源
+Given Jenkins 返回 N 个 jobs，SWPM 本地配置有有效 last_project
+When 用户首次展开 Project
+Then 下拉框包含这 N 个 job 名称
+And 自动恢复有效 last_project
+And 这些选项不依赖当前 Tasks 内容
+And 已加载 Tasks 中仅作为业务展示值存在的 Project/别名不得被追加为可触发 Pull/Build 的 Jenkins job 选项
+AC-03 远端完整 Pull
+Given 所选 Project 已配置 scopes/modules/paths，且本地 Artifact 和 ALM cache 被安全移走
+When 用户点击 Pull
+Then 日志包含 Jenkins Downloading、RTC session success，以及所选 Project 实际配置数量的 Pulling scope n/m
+And 日志不包含 Using local export 或 Using cached scope
+And Pull 成功后 Tasks 和 Traceability 可查看
+AC-04 缓存感知 Pull
+Given latest successful Build 未变化，Artifact 和全部 scope cache 均存在
+When 再次点击 Pull
+Then 日志包含 Using local export 和 Using cached scope
+And 不触发 Jenkins Build
+And 最终结果仍重新解析并重建 Traceability
+AC-05 Table 字段和筛选
+Given 已成功加载多来源数据
+When 切换到 Table 并组合 Type、Source、Status 筛选
+Then 只有同时满足条件的任务显示
+And 三个筛选器始终保留，即使结果为 0
+And 表格最后一列是 Raw Status，不是 Quality 百分比
+AC-06 Kanban 状态一致性
+Given 与 AC-05 相同筛选条件
+When 切换到 Kanban
+Then Task 集合与 Table 一致
+And 每条任务只进入一个标准状态列
+And 逾期未完成任务被标记，Done 不标记逾期
+AC-07 动态 Trace 统计
+Given 已加载至少两个 Iteration 的 Traceability
+When 改变 Project、Iteration 或搜索条件
+Then 四类统计和 coverage 只基于当前范围重新计算
+And coverage=round(endToEndCount/linkedDoorCount×100%)
+And 选择 category 后只显示该类别记录
+AC-08 精确链接与分类
+Given 构造四条 DOORS 记录分别满足四类定义
+When 重建 Traceability
+Then 每条记录进入且只进入正确类别
+And 标题相同但没有精确 ID 的记录不得建立链接
+And unresolved ALM ID 显示为 Outside loaded ALM scopes
+AC-09 Partial failure
+Given DOORS/QC 可用但 RTC 认证失败
+When 用户执行 Pull
+Then 日志明确显示 RTC login failed
+And 页面不得声称 ALM 已远端刷新成功
+And 若返回 partial result，状态区域必须包含 ALM error
+And 页面拉取前的数据不得因失败而丢失
+AC-10 并发控制
+Given 一个 Pull 或 Build & Pull 正在运行
+When 第二个客户端再次启动任一数据操作
+Then 第二个请求收到 HTTP 409
+And 第一个操作继续运行并可查询进度
+AC-11 分页
+Given 筛选后结果超过 100 条
+When 用户分别选择 25、50、100 Rows 并翻页
+Then 每页条数、起止序号、总数和按钮禁用状态正确
+AC-12 数据安全
+Given 完成一次成功和一次失败 Pull
+Then 浏览器 response、页面和日志中均不存在 Jenkins/RTC 密码、cookie 或认证 header
+AC-13 Trigger Build & Pull
+Given 用户已选择一个有 Jenkins Build 权限且配置完整的 Project
+When 用户点击 Trigger Build & Pull 并确认
+Then 前端发送一次 POST /api/tasks/build
+And 后端先读取旧 Build 编号，再且仅调用一次 buildWithParameters
+And 每 5 秒轮询新 Build 状态
+And 新 Build 为 SUCCESS 后下载其 Artifact、刷新 ALM、重建 Tasks 和 Traceability
+And 完成状态显示新 Build 编号
+But 若用户取消、Build 失败或超时，则不得继续成成功 Pull，页面旧数据保持不变
+AC-14 运行中取消
+Given 普通 Pull 或 Build & Pull 已创建后台 job 且仍在运行
+When 用户点击 Cancel & Close
+Then 前端调用一次 POST /api/tasks/pull/{job_id}/cancel
+And 本地 worker 停止，job 进入 Cancelled，页面原有成功数据保持不变
+And 普通 Pull 不调用 Jenkins queue cancellation
+And Build & Pull 只有在本次 queue item 仍处于队列中且 Project 校验一致时才取消该 item
+But 已经开始执行的 Jenkins Build 不得被自动终止
+AC-15 后端运行时独立性
+Given 参考 GUI 项目目录不存在或旧参考路径被设置为无效值
+When 用户加载 Jenkins Project 列表并完成一次普通 Pull
+Then SWPM 仅使用本仓库 Python、backend/summary_backend.py 和 backend/.app_cache
+And 不导入或启动参考 GUI 脚本、embedded Python 或 .app_cache
+11. 依赖和发布前置条件
+依赖	前置条件	影响
+Jenkins	网络可达；SWPM 后端账号拥有查询 job、Build、Artifact 及触发 buildWithParameters 的权限	Project、Build、DOORS、QC
+Jenkins Artifact	latest successful Build 中包含一个 *_ref.zip，目录/CSV schema 与解析器兼容	DOORS、QC
+RTC/ALM	有效 credential；账号有权访问所选 iteration	ALM
+SWPM Python 环境	本仓库 backend/summary_backend.py 及依赖可用；不得依赖参考 GUI 目录、脚本或 embedded Python	全部 Pull
+SWPM 本地配置	已配置 Project 应保存 ALM scopes、DOORS module/baseline、QC paths；未配置 Project 允许自动发现 DOORS/QC，ALM 明确标记为 skipped	数据范围
+ALM timeline cache	保存的 scope display 能解析到 iteration URL	ALM Pull
+SWPM 后端环境变量	正确设置 Jenkins/RTC 连接参数；config、Jenkins cache、ALM cache 默认位于本仓库 backend/.app_cache	后端启动与解析
+发布前必须至少使用一个已配置 Project 完成一次远端完整 Pull、一次缓存感知 Pull，并在测试 Jenkins Job 或等效测试桩上验证一次 Trigger Build & Pull。不得为了验收在未授权的生产 Job 上触发 Build。
+
+12. 已知限制与待决策项
+ID	项目	当前状态	需要的决策
+DEC-001	Pull 是否每次强制远端刷新	当前为缓存感知模式	业务方确认保留缓存优先，还是改为每次强制下载/查询
+DEC-002	性能 SLA	未承诺固定时间	基于目标环境、Project 和 scope 数量确定 P95 指标
+DEC-003	Partial result 中旧缓存标识	当前错误会展示，但记录级新鲜度没有单独 badge	是否要求每个 Source 显示本次 Remote/Cached/Failed 和时间
+DEC-004	Truncated UI 提示	后端 meta 可标记，页面暂无专用提示	是否升为 P0 并在 Summary 显示
+DEC-005	Pull 取消	已实现：普通 Pull 取消本地 worker；Build & Pull 额外取消仍在队列中的本次 Jenkins item	已关闭；持续通过 AC-14 回归验证
+DEC-006	多项目同时查看	当前一次 Pull 聚焦一个 Jenkins Project	是否需要多项目并行/合并视图
+DEC-007	数据持久化	当前仅浏览器内存	是否需要审计历史或共享快照；需同时定义保留期和权限
+DEC-008	同一 Jenkins Job 的外部并发触发	当前以 lastBuild 编号变化识别新 Build	若存在其他工具同时触发同一 Job，应升级为依据 Jenkins queue item 精确跟踪本次 Build
+12.1 已识别实现差异
+下列项目是当前代码尚未满足本需求基线的已知差异。它们应通过代码修复关闭，不得通过降低或删除对应需求规避：
+
+ID	对应需求	当前实现差异	期望处理
+GAP-001	FR-PROJ-002	Project 下拉框当前会合并 Jenkins jobs 与已加载任务中的业务 Project/别名	后续修改前端，只把 Jenkins jobs 作为可触发 Pull/Build 的 Project 选项
+GAP-002	NFR-SEC-004	活动 RTC/ALM 拉取路径仍存在 verify=False，未实际执行 .env 中的 TLS 校验配置	后续统一接入 RTC_ALM_VERIFY_SSL/CA bundle，并移除硬编码 verify=False
+GAP-003	7.1、NFR-REL-006	ALM 刷新判断当前使用全局 last_build，可能在切换 Project 时误判	改为按 Jenkins Project 保存和比较最后成功 Build
+GAP-004	EX-009	无 ALM scope 的 skipped 结果当前可能被计入成功 source，导致 Jenkins/DOORS/QC 全失败时仍返回 partial/completed	skipped 不应作为远端成功来源；所有实际来源失败时 job 必须为 Failed
+13. 需求—测试追踪矩阵
+需求组	主要验收用例
+FR-INIT-*	AC-01、AC-09
+FR-PROJ-*	AC-02
+FR-PULL-*	AC-03、AC-04、AC-09、AC-10、AC-14
+FR-BLD-*	AC-10、AC-13、AC-14
+FR-LOG-*	AC-03、AC-04、AC-09、AC-14
+FR-SUM-*	AC-05、AC-07
+FR-FLT-*	AC-05、AC-06、AC-07
+FR-TBL-*	AC-05
+FR-KAN-*	AC-06
+FR-PAGE-*	AC-11
+FR-TRC-*	AC-07、AC-08
+NFR-SEC-*	AC-12
+NFR-REL-*	AC-03、AC-04、AC-09、AC-10、AC-13
+NFR-ARCH-*	AC-15
+14. 变更记录
+版本	日期	变更内容	作者
+V1.0	2026-10-08	根据当前 Task Page、Pull、ALM/DOORS/QC 解析、Traceability、筛选和进度功能建立可测试需求基线	Codex
+V1.1	2026-10-09	新增 Trigger Build & Pull、确认、轮询、成功后自动 Pull、异常与验收要求	Codex
+V1.2	2026-10-09	明确未配置 Project 的 DOORS/QC 自动发现与 ALM skipped 行为；补充普通 Pull/Build 取消；统一 Project 来源、按钮、提示和验收规则；记录 TLS、按 Project Build 状态及全来源失败判定等实现差异	Codex

@@ -4,3 +4,6 @@ backend/.cache/
 dist/
 node_modules/
 .playwright-cli/
+
+backend/.envbackup
+backend/.app_cache/

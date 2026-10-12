@@ -1,4 +1,8 @@
+let cachedPayload = null;
+
+// Kept for the browser session so leaving and re-entering the page does not re-download the large payload.
 export async function fetchTasks({ signal, refresh = false } = {}) {
+  if (cachedPayload && !refresh) return cachedPayload;
   const query = refresh ? '?refresh=true' : '';
   const response = await fetch(`/api/tasks${query}`, {
     method: 'GET',
@@ -25,9 +29,10 @@ export async function fetchTasks({ signal, refresh = false } = {}) {
     throw new Error('Task API returned an invalid response');
   }
 
-  return {
+  cachedPayload = {
     tasks: payload.tasks,
     traceability: Array.isArray(payload.traceability) ? payload.traceability : [],
     meta: payload.meta || {},
   };
+  return cachedPayload;
 }

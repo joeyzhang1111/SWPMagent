@@ -211,6 +211,455 @@
   white-space: nowrap;
 }
 
+/* Reference analysis workspace */
+.task-mode-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.task-mode-tabs button,
+.analysis-result-tabs button {
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-mode-tabs button {
+  padding: 9px 16px;
+}
+
+.task-mode-tabs button.active,
+.analysis-result-tabs button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.analysis-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.analysis-control-card,
+.analysis-job,
+.analysis-results {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+
+.analysis-control-card {
+  padding: 20px;
+}
+
+.analysis-control-heading,
+.analysis-source-row,
+.analysis-job-heading,
+.analysis-result-filters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.analysis-control-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.analysis-control-heading h2 {
+  margin: 3px 0 5px;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.analysis-control-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.analysis-eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.analysis-primary-actions,
+.analysis-jenkins-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.analysis-source-row {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding-top: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.analysis-source-row > label {
+  display: grid;
+  gap: 6px;
+  min-width: 230px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analysis-jenkins-status {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 3px 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.analysis-jenkins-status small {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+}
+
+.analysis-input-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analysis-multi-select {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+
+.analysis-field-heading,
+.analysis-multi-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.analysis-field-heading span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.analysis-multi-actions {
+  margin: 10px 0;
+}
+
+.analysis-multi-actions input,
+.analysis-result-filters input {
+  min-width: 0;
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.analysis-multi-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.analysis-option-list {
+  display: grid;
+  gap: 3px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.analysis-option-list label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 4px;
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.analysis-option-list label:hover {
+  background: var(--bg-secondary);
+}
+
+.analysis-option-list label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-expand-btn {
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.analysis-option-list label:hover .analysis-expand-btn,
+.analysis-expand-btn:focus-visible,
+.analysis-expand-btn:disabled {
+  opacity: 1;
+}
+
+.analysis-expand-btn:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.analysis-result-scope {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.analysis-result-scope--stale {
+  border-color: var(--amber);
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.analysis-empty-option {
+  padding: 12px 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.analysis-job {
+  padding: 16px;
+}
+
+.analysis-job-heading {
+  justify-content: space-between;
+}
+
+.analysis-progress {
+  height: 8px;
+  margin: 10px 0 5px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--bg-secondary);
+}
+
+.analysis-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width .25s ease;
+}
+
+.analysis-job--failed .analysis-progress span {
+  background: var(--red);
+}
+
+.analysis-step-label,
+.analysis-job-error {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.analysis-job-error {
+  margin-top: 8px;
+  color: var(--red);
+}
+
+.analysis-log {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.analysis-log > div {
+  max-height: 210px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 7px;
+  background: #111827;
+  color: #d1d5db;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.analysis-log p {
+  display: flex;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.analysis-log p span {
+  color: #6b7280;
+}
+
+.analysis-log .log-error {
+  color: #fca5a5;
+}
+
+.analysis-results {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.analysis-result-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-result-tabs button {
+  display: inline-flex;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 8px 11px;
+}
+
+.analysis-result-tabs button span {
+  opacity: .72;
+  font-size: 11px;
+}
+
+.analysis-result-filters {
+  padding: 12px 14px;
+}
+
+.analysis-result-filters label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.analysis-result-filters > span {
+  margin-left: auto;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.analysis-table-wrap {
+  max-height: 620px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-table {
+  min-width: 1250px;
+}
+
+.analysis-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.analysis-table td {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-row--issue td {
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+.analysis-overview {
+  padding: 16px;
+}
+
+.analysis-overview-cards,
+.analysis-summary-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.analysis-overview-cards {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.analysis-overview-card {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-secondary);
+}
+
+.analysis-overview-card span,
+.analysis-overview-card small {
+  color: var(--text-secondary);
+}
+
+.analysis-overview-card strong {
+  font-size: 24px;
+}
+
+.analysis-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.analysis-summary-grid pre {
+  min-height: 180px;
+  max-height: 300px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border-radius: 9px;
+  background: #111827;
+  color: #d1d5db;
+  font: 11px/1.55 'JetBrains Mono', monospace;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1180px) {
+  .analysis-input-grid,
+  .analysis-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analysis-overview-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .analysis-control-heading { display: grid; }
+  .analysis-input-grid,
+  .analysis-summary-grid { grid-template-columns: 1fr; }
+  .analysis-overview-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analysis-source-row > label { min-width: 100%; }
+}
+
 /* Kanban Board */
 .kanban-board {
   display: grid;
@@ -370,6 +819,7 @@
 .health-dot--ok { background: var(--green); }
 .health-dot--warn { background: var(--amber); }
 .health-dot--bad { background: var(--red); }
+.health-dot--info { background: var(--text-secondary); }
 
 .health-progress {
   flex: 1;
@@ -454,6 +904,7 @@
 .health-tag--ok { color: var(--green); }
 .health-tag--warn { color: var(--amber); }
 .health-tag--bad { color: var(--red); }
+.health-tag--info { color: var(--text-secondary); }
 
 .matrix-detail-row td { padding: 0 14px 16px; border-bottom: 1px solid var(--border); }
 .matrix-detail-row:last-of-type td { border-bottom: none; }

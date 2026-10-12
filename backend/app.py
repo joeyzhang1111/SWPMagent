@@ -12,9 +12,12 @@ from typing import Any
 
 import requests
 import urllib3
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
+from backend.analysis_service import analysis_service
 from backend.doors import DoorsDataError, load_doors_tasks
 from backend.qc import QcDataError, load_qc_tasks
 from backend.traceability import build_traceability
@@ -571,7 +574,7 @@ app.add_middleware(
         if origin.strip()
     ],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -579,6 +582,99 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/analysis/bootstrap")
+def analysis_bootstrap(refresh_projects: bool = Query(default=False, alias="refreshProjects")) -> dict[str, Any]:
+    try:
+        return analysis_service.bootstrap(refresh_projects)
+    except Exception as exc:
+        LOGGER.exception("Unable to initialize reference analysis backend")
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/api/analysis/inputs")
+def analysis_inputs(project: str, build: str, refresh: bool = False) -> dict[str, Any]:
+    try:
+        return analysis_service.inputs(project.strip(), build.strip(), refresh)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOGGER.exception("Unable to load reference analysis inputs")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/analysis/cached-builds")
+def analysis_cached_builds(project: str) -> dict[str, Any]:
+    try:
+        return {"builds": analysis_service.cached_builds(project.strip())}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post("/api/analysis/alm-children")
+def analysis_alm_children(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    display = str(payload.get("display") or "").strip()
+    if not display:
+        raise HTTPException(status_code=400, detail="ALM iteration is required")
+    try:
+        return analysis_service.load_alm_children(display)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        LOGGER.exception("Unable to load ALM sub-iterations")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.get("/api/analysis/jenkins-status")
+def analysis_jenkins_status(project: str) -> dict[str, Any]:
+    try:
+        return analysis_service.jenkins_status(project.strip())
+    except Exception as exc:
+        LOGGER.exception("Unable to read Jenkins status")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@app.post("/api/analysis/trigger-build")
+def analysis_trigger_build(payload: dict[str, Any] = Body(...)) -> dict[str, str]:
+    project = str(payload.get("project") or "").strip()
+    if not project:
+        raise HTTPException(status_code=400, detail="Project is required")
+    return {"jobId": analysis_service.trigger_build(project)}
+
+
+@app.post("/api/analysis/runs")
+def analysis_start(payload: dict[str, Any] = Body(...)) -> dict[str, str]:
+    if not str(payload.get("project") or "").strip():
+        raise HTTPException(status_code=400, detail="Project is required")
+    if not str(payload.get("build") or "").strip():
+        raise HTTPException(status_code=400, detail="Build is required")
+    return {"jobId": analysis_service.start_analysis(payload)}
+
+
+@app.get("/api/analysis/runs/{job_id}")
+def analysis_job(job_id: str, include_result: bool = Query(default=True, alias="includeResult")) -> dict[str, Any]:
+    job = analysis_service.job(job_id, include_result=include_result)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Analysis job not found")
+    return job
+
+
+@app.get("/api/analysis/runs/{job_id}/report")
+def analysis_report(job_id: str) -> FileResponse:
+    try:
+        path = analysis_service.export_report(job_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Completed analysis result not found") from exc
+    except Exception as exc:
+        LOGGER.exception("Unable to export analysis report")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return FileResponse(
+        path,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=path.name,
+        background=BackgroundTask(path.unlink, missing_ok=True),
+    )
 
 
 @app.get("/api/tasks")

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.doors import PROJECT_ALIASES
+from backend.normalize import NORMALIZER_VERSION, normalize_baseline
 
 
 try:
@@ -52,7 +53,7 @@ def _extract_baseline(path: str) -> str:
     for part in path.split("\\"):
         match = re.search(r"baseline\s*[_ ]*([0-9.]+)", part, re.IGNORECASE)
         if match:
-            return match.group(1)
+            return normalize_baseline(match.group(1).rstrip("."))
     return ""
 
 
@@ -96,7 +97,7 @@ def _test_instance_to_task(row: dict[str, str], project_key: str) -> dict[str, A
     comment = str(row.get("RB_Comment") or "").strip()
     status = _status(raw_status)
     has_issue = raw_status != "Passed" and not comment
-    baseline = str(row.get("RB_Baseline") or "").strip()
+    baseline = normalize_baseline(row.get("RB_Baseline"))
     folder_path = str(row.get("TestSetFolder_Path_full") or "").strip()
     if not baseline:
         baseline = _extract_baseline(folder_path)
@@ -155,7 +156,7 @@ def _requirement_to_task(
     cover_status = str(row.get("Direct_Cover_Status") or "").strip()
     status = _status(cover_status)
     has_issue = cover_status != "Passed"
-    baseline = str(row.get("RB_Baseline") or "").strip()
+    baseline = normalize_baseline(row.get("RB_Baseline"))
     project = PROJECT_ALIASES.get(project_key, project_key)
     task_id = raw_id if raw_id.upper().startswith("QC-") else f"QC-REQ-{raw_id}"
     title = _compact(row.get("Name") or row.get("REQ_Name"))
@@ -195,6 +196,7 @@ def _fingerprint(config_path: Path, selected_files: list[Path], max_records: int
         digest.update(str(stat.st_size).encode("ascii"))
         digest.update(str(stat.st_mtime_ns).encode("ascii"))
     digest.update(str(max_records).encode("ascii"))
+    digest.update(f"normalizer:{NORMALIZER_VERSION}".encode("ascii"))
     return digest.hexdigest()
 
 
@@ -332,7 +334,7 @@ def load_qc_tasks(
             ) as csv_file:
                 reader = csv.DictReader(csv_file, delimiter=";", quotechar='"')
                 for row in reader:
-                    if str(row.get("RB_Baseline") or "").strip() not in baselines:
+                    if normalize_baseline(row.get("RB_Baseline")) not in baselines:
                         continue
                     if str(row.get("Requirement_Type") or "").strip() != "105":
                         continue

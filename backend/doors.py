@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from backend.normalize import NORMALIZER_VERSION, normalize_baseline, normalize_baselines
+
 
 try:
     csv.field_size_limit(512 * 1024 * 1024)
@@ -21,6 +23,7 @@ PROJECT_ALIASES = {
     "Vinfast_IPB2_0_ROPP41": "Vinfast_IPB2.0_ROPP41",
     "RG-003597_GHRD_ESP9.3": "Honda_3NE_ESP9.3",
     "RG_03308_Lotus_T132A_PHEV_IPB1": "Lotus_T132A_IPB1.1",
+    "RG_003651_BAW212_IPB2_VDM": "BAW212_WB105_IPB2.0_w_VDM",
 }
 
 VALID_AS_STATUSES = {
@@ -73,7 +76,7 @@ def _as_issue_reasons(row: dict[str, str]) -> list[str]:
     status = str(row.get("RB_AS_Status") or "").strip().lower()
     agreed = str(row.get("RB_Agreed_by_Customer") or "").strip().upper()
     change = str(row.get("RB_Change_Required") or "").strip().lower()
-    baseline = str(row.get("RB_Baseline") or "").strip()
+    baseline = normalize_baseline(row.get("RB_Baseline"))
     fnid = str(row.get("RB_Top_FNID") or "").strip()
     reasons: list[str] = []
 
@@ -174,7 +177,7 @@ def _external_links(module_path: Path) -> dict[str, list[str]]:
 
 
 def _matches_baseline(value: str, selected: set[str]) -> bool:
-    baseline = value.strip()
+    baseline = normalize_baseline(value)
     return baseline in selected or (not baseline and "<EMPTY>" in selected)
 
 
@@ -191,7 +194,7 @@ def _row_to_task(
         return None
 
     project = PROJECT_ALIASES.get(project_key, project_key)
-    baseline = str(row.get("RB_Baseline") or "").strip() or "<EMPTY>"
+    baseline = normalize_baseline(row.get("RB_Baseline")) or "<EMPTY>"
     raw_status = str(
         row.get("RB_AS_Status") if category == "10_AS" else row.get("RB_RS_CP_Status")
         or ""
@@ -250,6 +253,7 @@ def _fingerprint(config_path: Path, selected_files: list[Path], max_records: int
         digest.update(str(stat.st_size).encode("ascii"))
         digest.update(str(stat.st_mtime_ns).encode("ascii"))
     digest.update(str(max_records).encode("ascii"))
+    digest.update(f"normalizer:{NORMALIZER_VERSION}".encode("ascii"))
     return digest.hexdigest()
 
 
@@ -292,7 +296,7 @@ def load_doors_tasks(
             ("10_AS", "as_file_names", "as_features"),
             ("40_Gen_SWXS", "xs_file_names", "xs_features"),
         ):
-            baselines = {str(value).strip() for value in selection.get(baselines_key) or [] if str(value).strip()}
+            baselines = set(normalize_baselines(selection.get(baselines_key) or []))
             if not baselines:
                 continue
             for module_name in selection.get(names_key) or []:
@@ -323,6 +327,7 @@ def load_doors_tasks(
     tasks: list[dict[str, Any]] = []
     parse_errors: list[str] = []
     truncated = False
+    cleaned: dict[tuple[str, str, str], int] = {}
     for project_key, category, module_name, baselines, module_path in selected_modules:
         external_links = _external_links(module_path)
         try:
@@ -331,8 +336,11 @@ def load_doors_tasks(
                 for row in reader:
                     if str(row.get("Modulename") or "").strip() != module_name:
                         continue
-                    baseline = str(row.get("RB_Baseline") or "")
-                    if not _matches_baseline(baseline, baselines):
+                    raw_baseline = str(row.get("RB_Baseline") or "")
+                    if raw_baseline and raw_baseline != normalize_baseline(raw_baseline):
+                        change = (module_name, raw_baseline, normalize_baseline(raw_baseline))
+                        cleaned[change] = cleaned.get(change, 0) + 1
+                    if not _matches_baseline(raw_baseline, baselines):
                         continue
                     url = str(row.get("URL") or "").strip()
                     task = _row_to_task(
@@ -363,6 +371,10 @@ def load_doors_tasks(
             "missingModules": missing_modules,
             "parseErrors": parse_errors,
             "truncated": truncated,
+            "baselineNormalized": [
+                {"module": module, "raw": raw, "normalized": value, "rows": rows}
+                for (module, raw, value), rows in sorted(cleaned.items())
+            ],
             "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         },
     }
